@@ -1,0 +1,12 @@
+{application, smpp34,
+ [
+  {description, ""},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { smpp34_app, []}},
+  {env, []}
+ ]}.
