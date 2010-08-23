@@ -2,7 +2,12 @@
  [
   {description, ""},
   {vsn, "1"},
-  {registered, []},
+  {modules, [smpp34_app,
+	  		 smpp34_sup,
+			 smpp34_snum_sup,
+			 smpp34_snum
+	  		]},
+  {registered, [smpp34_sup, smpp34_snum_sup]},
   {applications, [
                   kernel,
                   stdlib
