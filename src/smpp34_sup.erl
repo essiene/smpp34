@@ -24,5 +24,6 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-    {ok, { {one_for_one, 5, 10}, [?CHILD(smpp34_snum_sup, supervisor)]} }.
+    {ok, { {one_for_one, 5, 10}, [?CHILD(smpp34_snum_sup, supervisor),
+			 					  ?CHILD(smpp34_rx_sup, supervisor)]}}.
 
