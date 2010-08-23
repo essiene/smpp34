@@ -1,7 +1,7 @@
 {application, smpp34,
  [
   {description, ""},
-  {vsn, "1"},
+  {vsn, "0.1"},
   {modules, [smpp34_app,
 	  		 smpp34_sup,
 			 smpp34_snum_sup,
