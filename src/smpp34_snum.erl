@@ -17,26 +17,26 @@ start_link(Owner) ->
     gen_server:start_link(?MODULE, [Owner], []).
 
 stop(Pid) ->
-    gen_server:cast(Pid, {self(), stop}).
+    gen_server:cast(Pid, stop).
 
 next(Pid) ->
-    gen_server:call(Pid, {self(), next}).
+    gen_server:call(Pid, next).
 
 
 init([Owner]) ->
 	MonitorRef = erlang:monitor(process, Owner),
     {ok, #state{owner=Owner, count=0, monitref=MonitorRef}}.
 
-handle_call({Owner, next}, _From, #state{owner=Owner, count=16#7fffffff}=St) ->
+handle_call(next, _From, #state{count=16#7fffffff}=St) ->
     N1 = 1,
     {reply, {ok, N1}, St#state{count=N1}};
-handle_call({Owner, next}, _From, #state{owner=Owner, count=N}=St) ->
+handle_call(next, _From, #state{count=N}=St) ->
     N1 = N+1,
     {reply, {ok, N1}, St#state{count=N1}};
 handle_call(Req, _From, St) ->
     {reply, {error, Req}, St}.
 
-handle_cast({Owner, stop}, #state{owner=Owner}=St) ->
+handle_cast(stop, St) ->
     {stop, normal, St};
 handle_cast(_Req, St) ->
     {noreply, St}.
