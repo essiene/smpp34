@@ -5,9 +5,11 @@
   {modules, [smpp34_app,
 	  		 smpp34_sup,
 			 smpp34_snum_sup,
-			 smpp34_snum
+			 smpp34_snum,
+			 smpp34_rx_sup,
+			 smpp34_rx
 	  		]},
-  {registered, [smpp34_sup, smpp34_snum_sup]},
+  {registered, [smpp34_sup, smpp34_snum_sup, smpp34_rx_sup]},
   {applications, [
                   kernel,
                   stdlib
