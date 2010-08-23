@@ -1,4 +1,5 @@
 -module(smpp34_snum).
+-include("util.hrl").
 -behaviour(gen_server).
 
 -export([start_link/1,start_link/2,stop/1,next/1]).
@@ -11,7 +12,6 @@
         code_change/3]).
 
 -record(state, {owner, count, monitref}).
--record('DOWN', {ref, type, obj, info}).
 
 start_link(Owner) ->
 	start_link(Owner, 0).
