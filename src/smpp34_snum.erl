@@ -1,7 +1,7 @@
 -module(smpp34_snum).
 -behaviour(gen_server).
 
--export([start_link/0,stop/1,next/1]).
+-export([start_link/1,start_link/2,stop/1,next/1]).
 
 -export([init/1,
         handle_call/3,
@@ -14,7 +14,10 @@
 -record('DOWN', {ref, type, obj, info}).
 
 start_link(Owner) ->
-    gen_server:start_link(?MODULE, [Owner], []).
+	start_link(Owner, 0).
+
+start_link(Owner, Start) ->
+    gen_server:start_link(?MODULE, [Owner, Start], []).
 
 stop(Pid) ->
     gen_server:cast(Pid, stop).
@@ -23,9 +26,9 @@ next(Pid) ->
     gen_server:call(Pid, next).
 
 
-init([Owner]) ->
+init([Owner, Start]) ->
 	MonitorRef = erlang:monitor(process, Owner),
-    {ok, #state{owner=Owner, count=0, monitref=MonitorRef}}.
+    {ok, #state{owner=Owner, count=Start, monitref=MonitorRef}}.
 
 handle_call(next, _From, #state{count=16#7fffffff}=St) ->
     N1 = 1,
