@@ -2,7 +2,8 @@
 -include("util.hrl").
 -behaviour(gen_server).
 
--export([start_link/1,start_link/2,stop/1,next/1]).
+-export([start_link/1,start_link/2,stop/1]).
+-export([next/1, ping/1]).
 
 -export([init/1,
         handle_call/3,
@@ -25,11 +26,16 @@ stop(Pid) ->
 next(Pid) ->
     gen_server:call(Pid, next).
 
+ping(Pid) ->
+	gen_server:call(Pid, ping).
+
 
 init([Owner, Start]) ->
 	MonitorRef = erlang:monitor(process, Owner),
     {ok, #state{owner=Owner, count=Start, monitref=MonitorRef}}.
 
+handle_call(ping, _From, #state{owner=Owner, count=Count}=St) ->
+	{reply, {pong, [{owner=Owner}, {count,Count}]}, St};
 handle_call(next, _From, #state{count=16#7fffffff}=St) ->
     N1 = 1,
     {reply, {ok, N1}, St#state{count=N1}};
