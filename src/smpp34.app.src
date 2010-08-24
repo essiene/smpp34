@@ -7,9 +7,15 @@
 			 smpp34_snum_sup,
 			 smpp34_snum,
 			 smpp34_tcprx_sup,
-			 smpp34_tcprx
+			 smpp34_tcprx,
+			 smpp34_tcptx_sup,
+			 smpp34_tcptx
 	  		]},
-  {registered, [smpp34_sup, smpp34_snum_sup, smpp34_tcprx_sup]},
+  {registered, [smpp34_sup, 
+	  			smpp34_snum_sup, 
+				smpp34_tcprx_sup, 
+				smpp34_tcptx_sup
+				]},
   {applications, [
                   kernel,
                   stdlib
