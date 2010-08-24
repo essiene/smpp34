@@ -13,19 +13,19 @@
         code_change/3]).
 
 
--record(state, {owner,monitref,socket,pdu_sink,data}).
+-record(state, {owner,monitref,socket,pdurx,data}).
 
-start_link(Owner, Socket, PduSink) ->
-    gen_server:start_link(?MODULE, [Owner, Socket, PduSink], []).
+start_link(Owner, Socket, PduRx) ->
+    gen_server:start_link(?MODULE, [Owner, Socket, PduRx], []).
 
 stop(Pid) ->
     gen_server:cast(Pid, stop).
 
-init([Owner, Socket, PduSink]) ->
+init([Owner, Socket, PduRx]) ->
 	{ok, MonitorRef} = erlang:monitor(process, Owner),
     inet:setopts(Socket, [{active, once}]),
     {ok, #state{owner=Owner, monitref=MonitorRef, socket=Socket,
-				   pdu_sink=PduSink, data = <<>>}}.
+				   pdurx=PduRx, data = <<>>}}.
 
 handle_call(Req, _From, St) ->
     {reply, {error, Req}, St}.
@@ -35,10 +35,10 @@ handle_cast(stop, St) ->
 handle_cast(_Req, St) ->
     {noreply, St}.
 
-handle_info({tcp, Socket, Data}, #state{socket=Socket, data=Data0, pdu_sink=PduSink}=St) ->
+handle_info({tcp, Socket, Data}, #state{socket=Socket, data=Data0, pdurx=PduRx}=St) ->
     Data1 = <<Data0/binary,Data/binary>>,
 	{_, PduList, Rest} = smpp34pdu:unpack(Data1), 
-	notify(PduSink, PduList), 
+	notify(PduRx, PduList), 
 	inet:setopts(Socket, [{active, once}]), 
 	{noreply, St#state{data=Rest}};
 handle_info({tcp_closed, Socket}, #state{socket=Socket}=St) ->
