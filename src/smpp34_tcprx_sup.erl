@@ -1,5 +1,5 @@
 
--module(smpp34_rx_sup).
+-module(smpp34_tcprx_sup).
 
 -behaviour(supervisor).
 
@@ -22,13 +22,13 @@ start_link() ->
 start_child(Socket) ->
 	start_child(Socket, self()).
 
-start_child(Socket, PduSink) ->
-	supervisor:start_child(?MODULE, [self(), Socket, PduSink]).
+start_child(Socket, PduRx) ->
+	supervisor:start_child(?MODULE, [self(), Socket, PduRx]).
 
 %% ===================================================================
 %% Supervisor callbacks
 %% ===================================================================
 
 init([]) ->
-    {ok, { {simple_one_for_one, 5, 10}, [?CHILD(smpp34_rx, worker)]} }.
+    {ok, { {simple_one_for_one, 5, 10}, [?CHILD(smpp34_tcprx, worker)]} }.
 
