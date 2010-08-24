@@ -22,7 +22,7 @@ stop(Pid) ->
     gen_server:cast(Pid, stop).
 
 init([Owner, Socket, PduRx]) ->
-	{ok, MonitorRef} = erlang:monitor(process, Owner),
+	MonitorRef = erlang:monitor(process, Owner),
     inet:setopts(Socket, [{active, once}]),
     {ok, #state{owner=Owner, monitref=MonitorRef, socket=Socket,
 				   pdurx=PduRx, data = <<>>}}.
