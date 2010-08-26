@@ -47,7 +47,7 @@ handle_cast(#pdu{sequence_number=Snum, body=#enquire_link{}}, #state{tx=Tx}=St) 
 handle_cast(#pdu{sequence_number=Snum, body=#unbind{}}, #state{tx=Tx}=St) ->	
 	smpp34_tcptx:send(Tx, ?ESME_ROK, Snum, #unbind_resp{}),
 	{stop, unbind, St};
-handle_cast(#pdu{body=#unbind_resp{}}, #state{tx=Tx}=St) ->	
+handle_cast(#pdu{body=#unbind_resp{}}, St) ->	
 	{stop, unbind_resp, St};
 handle_cast(#pdu{}=Pdu, #state{owner=Owner}=St) ->
 	error_logger:info_msg("Sending pdu to owner(~p): ~p~n", [Owner, Pdu]),
