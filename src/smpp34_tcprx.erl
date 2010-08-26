@@ -23,7 +23,6 @@ stop(Pid) ->
 
 init([Owner, Socket, PduRx]) ->
 	MonitorRef = erlang:monitor(process, Owner),
-    inet:setopts(Socket, [{active, once}]),
     {ok, #state{owner=Owner, monitref=MonitorRef, socket=Socket,
 				   pdurx=PduRx, data = <<>>}}.
 
