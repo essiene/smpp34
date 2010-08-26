@@ -1,6 +1,6 @@
 -ifndef(util).
 -define(util, true).
 
--record('DOWN', {ref, type, obj, info}).
+-record('DOWN', {ref, type, obj, reason}).
 
 -endif.

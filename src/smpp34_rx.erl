@@ -3,7 +3,7 @@
 -include("util.hrl").
 -behaviour(gen_server).
 
--export([start_link/2,stop/1]).
+-export([start_link/3,stop/1]).
 -export([ping/1, deliver/2]).
 
 -export([init/1,
@@ -13,10 +13,10 @@
         terminate/2,
         code_change/3]).
 
--record(state, {owner, monitref, tx}).
+-record(state, {owner, mref, tx, rx, rx_mref}).
 
-start_link(Owner, Tx) ->
-    gen_server:start_link(?MODULE, [Owner, Tx], []).
+start_link(Owner, Tx, Socket) ->
+    gen_server:start_link(?MODULE, [Owner, Tx, Socket], []).
 
 stop(Pid) ->
     gen_server:cast(Pid, stop).
@@ -32,9 +32,11 @@ deliver(Pid, [Head|Rest]) ->
 deliver(Pid, Pdu) ->
 	gen_server:cast(Pid, Pdu).
 
-init([Owner, Tx]) ->
-	MonitorRef = erlang:monitor(process, Owner),
-    {ok, #state{owner=Owner, monitref=MonitorRef, tx=Tx}}.
+init([Owner, Tx, Socket]) ->
+	MRef = erlang:monitor(process, Owner),
+	{ok, Rx} = smpp34_tcprx_sup:start_child(Socket),
+	RxMref = erlang:monitor(process, Rx),
+    {ok, #state{owner=Owner, mref=MRef, tx=Tx, rx=Rx, rx_mref=RxMref}}.
 
 handle_call(ping, _From, #state{owner=Owner, tx=Tx}=St) ->
 	{reply, {pong, [{owner,Owner}, {tx,Tx}]}, St};
@@ -58,12 +60,14 @@ handle_cast(stop, St) ->
 handle_cast(_Req, St) ->
     {noreply, St}.
 
-handle_info(#'DOWN'{ref=MonitorRef}, #state{monitref=MonitorRef}=St) ->
+handle_info(#'DOWN'{ref=MRef, reason=R}, #state{rx_mref=MRef}=St) ->
+	{stop, {tcprx, R}, St};
+handle_info(#'DOWN'{ref=MRef}, #state{mref=MRef}=St) ->
 	{stop, normal, St};
 handle_info(_Req, St) ->
     {noreply, St}.
 
-terminate(normal, _St) ->
+terminate(_, _) ->
     ok.
 
 code_change(_OldVsn, St, _Extra) ->
