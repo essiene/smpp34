@@ -1,0 +1,8 @@
+PDUrx needs to know its RX
+PDUrx also needs to know its TXer
+So we need to work out synchronisation b/w these procs
+
+The dependencies b/w the different components should actually also guide the
+monitoring and cleanup activities when the DOWN message is received, so for
+instance, the PDURX should send #unbind{} if any other process dies, but if the
+TcpTX dies, there's no need, since the TcpTx will already have died.
