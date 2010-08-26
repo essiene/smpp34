@@ -55,17 +55,17 @@ handle_call(Req, _From, St) ->
 
 handle_cast({Rx, #pdu{sequence_number=Snum, body=#enquire_link{}}}, 
 					#state{tx=Tx, rx=Rx}=St) ->	
-	smpp34_tcptx:send(Tx, ?ESME_ROK, Snum, #enquire_link_resp{}),
+	tx_send(Tx, ?ESME_ROK, Snum, #enquire_link_resp{}),
 	{noreply, St};
 handle_cast({Rx, #pdu{sequence_number=Snum, body=#unbind{}}}, 
 					#state{tx=Tx, rx=Rx}=St) ->	
-	smpp34_tcptx:send(Tx, ?ESME_ROK, Snum, #unbind_resp{}),
+	tx_send(Tx, ?ESME_ROK, Snum, #unbind_resp{}),
 	{stop, unbind, St};
 handle_cast({Rx, #pdu{body=#unbind_resp{}}}, #state{rx=Rx}=St) ->	
 	{stop, unbind_resp, St};
 handle_cast({Rx, #pdu{}=Pdu}, #state{owner=Owner, rx=Rx}=St) ->
 	error_logger:info_msg("Sending pdu to owner(~p): ~p~n", [Owner, Pdu]),
-	Owner ! {self(), Pdu},
+	owner_send(Pdu),
 	{noreply, St};
 handle_cast(stop, St) ->
     {stop, normal, St};
@@ -73,7 +73,7 @@ handle_cast(_Req, St) ->
     {noreply, St}.
 
 handle_info(#'DOWN'{ref=MRef}, #state{tx_mref=MRef}=St) ->
-	{noreply, St#state{tx=closed, tx_mref=undefined}};
+	{noreply, St#state{tx=undefined, tx_mref=undefined}};
 handle_info(#'DOWN'{ref=MRef, reason=R}, #state{rx_mref=MRef}=St) ->
 	{stop, {tcprx, R}, St};
 handle_info(#'DOWN'{ref=MRef}, #state{mref=MRef}=St) ->
@@ -86,3 +86,12 @@ terminate(_, _) ->
 
 code_change(_OldVsn, St, _Extra) ->
     {noreply, St}.
+
+
+tx_send(undefined, _, _, _) ->
+	ok;
+tx_send(Tx, Status, Snum, Body) ->
+	smpp34_tx:send(Tx, Status, Snum, Bdy).
+
+owner_send(Pdu) ->
+	Owner ! {self(), Pdu}.
