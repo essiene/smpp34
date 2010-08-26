@@ -65,7 +65,7 @@ handle_cast({Rx, #pdu{body=#unbind_resp{}}}, #state{rx=Rx}=St) ->
 	{stop, unbind_resp, St};
 handle_cast({Rx, #pdu{}=Pdu}, #state{owner=Owner, rx=Rx}=St) ->
 	error_logger:info_msg("Sending pdu to owner(~p): ~p~n", [Owner, Pdu]),
-	owner_send(Pdu),
+	owner_send(Owner, Pdu),
 	{noreply, St};
 handle_cast(stop, St) ->
     {stop, normal, St};
@@ -91,7 +91,7 @@ code_change(_OldVsn, St, _Extra) ->
 tx_send(undefined, _, _, _) ->
 	ok;
 tx_send(Tx, Status, Snum, Body) ->
-	smpp34_tx:send(Tx, Status, Snum, Bdy).
+	smpp34_tx:send(Tx, Status, Snum, Body).
 
-owner_send(Pdu) ->
+owner_send(Owner, Pdu) ->
 	Owner ! {self(), Pdu}.
