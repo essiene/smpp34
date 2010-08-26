@@ -11,34 +11,62 @@ tasks, and communicate with each other via messages.
 
 The components are:
 
-tcptx - The TCP transmitter. This is responsible for all OUTBOUND tcp
-        communcation. It takes in records representing the PDU and then
+tx -    The PDU transmitter. This is responsible for all OUTBOUND tcp
+        communication. It takes in records representing the PDU and then
 		packs them into binary before sending them on their merry way 
 		on the network.
+
+snum - Generates sequence numbers. It is used by tx to add sequence numbers
+       to outgoing PDUs that do not have sequence numbers already.
+
+
+rx -    The PDU aware receiver. This where all incoming PDUs get delivered
+        after being unpacked. rx is protocol aware and is responsible for
+		taking some actions on the PDU before delivering them to its owner
+		process. Some of the actions taken on PDUs include:
+
+			#enquire_link{}: rx will construct an enquire_link_resp{} pdu
+		                     and send to tx for delivery
+			#unbind{}: rx will construct an unbind_resp{} pdu and deliver
+					   to tx for network delivery, then it will die. 
+			#unbind_resp{}: die :)
 
 tcprx - The TCP receiver. This is responsible for all INBOUND tcp 
         communication. It takes in binary PDUs from the network and
 		unpacks them into erlang records representing the PDU. Then
-		delivers them to a PDU aware receiver, PduRx
+		delivers them the rx module which owns it.
 
-pdurx - The PDU aware receiver. This where all incoming PDUs get delivered
-        after being unpacked. pdurx is protocol aware and is responsible for
-		taking some actions on the PDU before delivering them to its owner
-		process. Some of the actions taken on pdus include:
-
-			#enquire_link{}: pdurx will construct an enquire_link_resp{} pdu
-		                     and send to tcptx for delivery
-			#unbind{}: pdurx will construct an unbind_resp{} pdu and deliver
-					   to tcptx for delivery, then it will die. 
-			#unbind_resp{}: die :)
-
-snum - Generates sequence numbers. It is used by tcptx to add sequence numbers
-       outgoing PDUs that do not have sequence numbers already.
-
-smpp34 - This is a gen_server that actually orchestrates the functioning of
+esme - This is the process that actually orchestrates the functioning of
 	     the other components. More accurately, it starts the creation process
 		 and initiates a normal teardown when the need arises. 
 
+
+The relationship can be represented like:
+
++ esme
+    + tx
+	    + snum
+    + rx
+	    + tcprx
+
+process | source | data type
+=============================
+esme    | rx     | #pdu{}
+tx      | snum   | sequence_numbers
+tx      | rx     | #pdu{}
+tx      | esme   | #pdu{}
+rx      | tcprx  | #pdu{}
+tcprx   | NETWORK| binary pdu
+snum    |        |
+
+process | sink   |  data type
+=============================
+esme    | tx     |  #pdu{}
+tx      | NETWORK| binary pdu
+rx      | tx     |  #pdu{}
+rx      | esme   |  #pdu{}
+tcprx   | rx     |  #pdu{}
+snum    | tx     |  sequence_numbers
 
 Supervision Tree
 ================
@@ -53,12 +81,12 @@ The tree is described next.
 
 + smpp34_app
     + smpp34_sup [one_for_one]
-		+ smpp34_tcptx_sup [simple_one_for_one]
-			+ smpp34_tcptx [temporary]
+		+ smpp34_tx_sup [simple_one_for_one]
+			+ smpp34_tx [temporary]
+		+ smpp34_rx_sup [simple_one_for_one]
+			+ smpp34_rx [temporary]
 		+ smpp34_tcprx_sup [simple_one_for_one]
-			+ smpp34_tcprx [temporary]
-		+ smpp34_pdurx_sup [simple_one_for_one]
-			+ smpp34_pdu   [temporary]
+			+ smpp34_tcprx   [temporary]
 		+ smpp34_snum_sup  [simple_one_for_one]
 			+ smpp34_snum  [temporary]
 
@@ -67,19 +95,56 @@ In the illustration shown, the smpp34_app is the application callback which
 starts the smpp34_sup the top-level supervisor (a one_for_one supervisor).
 
 smpp34_sup starts all the other supervisors:
-	smpp34_tcptx_sup
+	smpp34_tx_sup
+	smpp34_rx_sup
 	smpp34_tcprx_sup
-	smpp34_pdurx_sup
 	smpp34_snum_sup
 
 These next level of supervisors are all simple_one_for_one supervisors.
 
 Once all these are started, the smpp34 library is ready to be used. Using
 the library then just involves asking the second level supervisors to 
-start an instance of their child_spec. This is exactly what the smpp34 
-gen_server does.
+start an instance of their child_spec. This is exactly what the esme
+process does.
 
 
-smpp34:connect/2 (a.k.a Startup)
-================================
+Startup Sequence
+================
+
+The startup sequence is as follows:
+
+esme -> tx [-> snum] -> rx [-> tcprx]
+
+
+
+Monitoring Relationship
+=======================
+
+esme -> tx, rx
+     tx -> esme, snum
+	    snum -> tx
+	 rx -> esme, tx, tcprx
+	    tcprx -> rx
+
+
+The Kiss Of Death
+=================
+
+On of the reasons for structuring the monitoring relationship this way, is to
+have an easy clear and preditable set of actions when components begin to die.
+
+The core principle is to make certain modules responsible for certain cleanup
+actions, and then ensure that the monitoring relationship enables this approach.
+
+The following are the possible scenarios.
+
+1.
+
+
+
+
+
+
+
+
 
