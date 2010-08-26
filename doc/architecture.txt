@@ -35,3 +35,51 @@ pdurx - The PDU aware receiver. This where all incoming PDUs get delivered
 snum - Generates sequence numbers. It is used by tcptx to add sequence numbers
        outgoing PDUs that do not have sequence numbers already.
 
+smpp34 - This is a gen_server that actually orchestrates the functioning of
+	     the other components. More accurately, it starts the creation process
+		 and initiates a normal teardown when the need arises. 
+
+
+Supervision Tree
+================
+
+Because smpp34 wants to be a properly behaved OTP citizen, it has a well defined
+supervision tree. Every component described above, apart from the smpp34
+gen_server is part of that supervision tree. The reason why the smpp34
+gen_server is not part of that tree is because it is mean to be used
+interactively, so supervising it does not make sense.
+
+The tree is described next.
+
++ smpp34_app
+    + smpp34_sup [one_for_one]
+		+ smpp34_tcptx_sup [simple_one_for_one]
+			+ smpp34_tcptx [temporary]
+		+ smpp34_tcprx_sup [simple_one_for_one]
+			+ smpp34_tcprx [temporary]
+		+ smpp34_pdurx_sup [simple_one_for_one]
+			+ smpp34_pdu   [temporary]
+		+ smpp34_snum_sup  [simple_one_for_one]
+			+ smpp34_snum  [temporary]
+
+
+In the illustration shown, the smpp34_app is the application callback which
+starts the smpp34_sup the top-level supervisor (a one_for_one supervisor).
+
+smpp34_sup starts all the other supervisors:
+	smpp34_tcptx_sup
+	smpp34_tcprx_sup
+	smpp34_pdurx_sup
+	smpp34_snum_sup
+
+These next level of supervisors are all simple_one_for_one supervisors.
+
+Once all these are started, the smpp34 library is ready to be used. Using
+the library then just involves asking the second level supervisors to 
+start an instance of their child_spec. This is exactly what the smpp34 
+gen_server does.
+
+
+smpp34:connect/2 (a.k.a Startup)
+================================
+
