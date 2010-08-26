@@ -13,7 +13,7 @@
         terminate/2,
         code_change/3]).
 
--record(state, {owner, mref, tx, rx, rx_mref}).
+-record(state, {owner, mref, tx, tx_mref, rx, rx_mref}).
 
 start_link(Owner, Tx, Socket) ->
     gen_server:start_link(?MODULE, [Owner, Tx, Socket], []).
@@ -38,9 +38,13 @@ deliver(Pid, Pdu) ->
 
 init([Owner, Tx, Socket]) ->
 	MRef = erlang:monitor(process, Owner),
+	TxMref = erlang:monitor(process, Tx),
 	{ok, Rx} = smpp34_tcprx_sup:start_child(Socket),
 	RxMref = erlang:monitor(process, Rx),
-    {ok, #state{owner=Owner, mref=MRef, tx=Tx, rx=Rx, rx_mref=RxMref}}.
+    {ok, 
+		#state{owner=Owner, mref=MRef, 
+			   tx=Tx, tx_mref=TxMref,
+			   rx=Rx, rx_mref=RxMref}}.
 
 handle_call(getrx, _From, #state{rx=Rx}=St) ->
 	{reply, {ok, Rx}, St};
