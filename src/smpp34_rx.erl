@@ -30,7 +30,7 @@ deliver(Pid, [Head|Rest]) ->
 	deliver(Pid, Head),
 	deliver(Pid, Rest);
 deliver(Pid, Pdu) ->
-	gen_server:cast(Pid, Pdu).
+	gen_server:cast(Pid, {self(), Pdu}).
 
 init([Owner, Tx, Socket]) ->
 	MRef = erlang:monitor(process, Owner),
@@ -38,20 +38,22 @@ init([Owner, Tx, Socket]) ->
 	RxMref = erlang:monitor(process, Rx),
     {ok, #state{owner=Owner, mref=MRef, tx=Tx, rx=Rx, rx_mref=RxMref}}.
 
-handle_call(ping, _From, #state{owner=Owner, tx=Tx}=St) ->
-	{reply, {pong, [{owner,Owner}, {tx,Tx}]}, St};
+handle_call(ping, _From, #state{owner=Owner, tx=Tx, rx=Rx}=St) ->
+	{reply, {pong, [{owner,Owner}, {tx,Tx}, {rx, Rx}]}, St};
 handle_call(Req, _From, St) ->
     {reply, {error, Req}, St}.
 
-handle_cast(#pdu{sequence_number=Snum, body=#enquire_link{}}, #state{tx=Tx}=St) ->	
+handle_cast({Rx, #pdu{sequence_number=Snum, body=#enquire_link{}}}, 
+					#state{tx=Tx, rx=Rx}=St) ->	
 	smpp34_tcptx:send(Tx, ?ESME_ROK, Snum, #enquire_link_resp{}),
 	{noreply, St};
-handle_cast(#pdu{sequence_number=Snum, body=#unbind{}}, #state{tx=Tx}=St) ->	
+handle_cast({Rx, #pdu{sequence_number=Snum, body=#unbind{}}}, 
+					#state{tx=Tx, rx=Rx}=St) ->	
 	smpp34_tcptx:send(Tx, ?ESME_ROK, Snum, #unbind_resp{}),
 	{stop, unbind, St};
-handle_cast(#pdu{body=#unbind_resp{}}, St) ->	
+handle_cast({Rx, #pdu{body=#unbind_resp{}}}, #state{rx=Rx}=St) ->	
 	{stop, unbind_resp, St};
-handle_cast(#pdu{}=Pdu, #state{owner=Owner}=St) ->
+handle_cast({Rx, #pdu{}=Pdu}, #state{owner=Owner, rx=Rx}=St) ->
 	error_logger:info_msg("Sending pdu to owner(~p): ~p~n", [Owner, Pdu]),
 	Owner ! {self(), Pdu},
 	{noreply, St};
