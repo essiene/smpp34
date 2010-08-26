@@ -72,6 +72,8 @@ handle_cast(stop, St) ->
 handle_cast(_Req, St) ->
     {noreply, St}.
 
+handle_info(#'DOWN'{ref=MRef}, #state{tx_mref=MRef}=St) ->
+	{noreply, St#state{tx=closed, tx_mref=undefined}};
 handle_info(#'DOWN'{ref=MRef, reason=R}, #state{rx_mref=MRef}=St) ->
 	{stop, {tcprx, R}, St};
 handle_info(#'DOWN'{ref=MRef}, #state{mref=MRef}=St) ->
