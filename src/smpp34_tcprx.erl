@@ -38,7 +38,7 @@ handle_cast(_Req, St) ->
 handle_info({tcp, Socket, Data}, #state{socket=Socket, data=Data0, pdurx=PduRx}=St) ->
     Data1 = <<Data0/binary,Data/binary>>,
 	{_, PduList, Rest} = smpp34pdu:unpack(Data1), 
-	notify(PduRx, PduList), 
+	smpp34_pdurx:deliver(PduRx, PduList), 
 	inet:setopts(Socket, [{active, once}]), 
 	{noreply, St#state{data=Rest}};
 handle_info({tcp_closed, Socket}, #state{socket=Socket}=St) ->
@@ -59,12 +59,3 @@ terminate(_Reason, _St) ->
 
 code_change(_OldVsn, St, _Extra) ->
     {noreply, St}.
-
-
-notify(_, []) ->
-    ok;
-notify(Pid, [Head|Rest]) ->
-    notify(Pid, Head),
-    notify(Pid, Rest);
-notify(Pid, Event) ->
-    Pid ! {self(), Event}.
