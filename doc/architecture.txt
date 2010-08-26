@@ -1,0 +1,37 @@
+smpp34 is designed to be a well behaved OTP application.
+
+This is so that it behaves properly when stacked up and used by
+other OTP applications.
+
+Components
+==========
+
+smpp34 is made up of a set of components, which have clearly defined
+tasks, and communicate with each other via messages.
+
+The components are:
+
+tcptx - The TCP transmitter. This is responsible for all OUTBOUND tcp
+        communcation. It takes in records representing the PDU and then
+		packs them into binary before sending them on their merry way 
+		on the network.
+
+tcprx - The TCP receiver. This is responsible for all INBOUND tcp 
+        communication. It takes in binary PDUs from the network and
+		unpacks them into erlang records representing the PDU. Then
+		delivers them to a PDU aware receiver, PduRx
+
+pdurx - The PDU aware receiver. This where all incoming PDUs get delivered
+        after being unpacked. pdurx is protocol aware and is responsible for
+		taking some actions on the PDU before delivering them to its owner
+		process. Some of the actions taken on pdus include:
+
+			#enquire_link{}: pdurx will construct an enquire_link_resp{} pdu
+		                     and send to tcptx for delivery
+			#unbind{}: pdurx will construct an unbind_resp{} pdu and deliver
+					   to tcptx for delivery, then it will die. 
+			#unbind_resp{}: die :)
+
+snum - Generates sequence numbers. It is used by tcptx to add sequence numbers
+       outgoing PDUs that do not have sequence numbers already.
+

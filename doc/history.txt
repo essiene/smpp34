@@ -1,0 +1,23 @@
+History
+=======
+
+smpp34 (and its related libraries like smpp34pdu) is a "Big ReWrite(tm)" of
+an adhoc implementation of smpp34. That adhoc implementation started after
+I attempted to use oserl but couldn't quite figure out how it worked.
+
+In an attempt to upgrade my knowledge, I downloaded the SMPP 3.4 spec and
+discovered it was a pretty well specified and simple protocol and I started
+playing around. 1 week later I could bind, submit and get SMS delivered to me.
+
+I ran away with that and implemented an SMPP server which worked pretty nicely
+for a ad-hoc spec. A few weeks later, looking at logs of my server, I began to
+notice the inevitable. I had errors that I could directly trace back to my
+library implementation. I could either fix it or re-write it properly. 
+
+A lot of the problems came from my incomplete protocol parser, the rest just
+had to do with my library design and process interactions. There was no stable
+core, so I decided to do it again. The first of that work is the smpp34pdu
+library which handles the pure PDU packing and unpacking.
+
+smpp34 exposes an interface which makes use of smpp34pdu to perform
+smpp 3.4 communication.
