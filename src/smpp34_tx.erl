@@ -1,4 +1,4 @@
--module(smpp34_tcptx).
+-module(smpp34_tx).
 -include_lib("smpp34pdu/include/smpp34pdu.hrl").
 -include("util.hrl").
 -behaviour(gen_server).

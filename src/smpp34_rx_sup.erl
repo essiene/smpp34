@@ -1,5 +1,5 @@
 
--module(smpp34_pdurx_sup).
+-module(smpp34_rx_sup).
 
 -behaviour(supervisor).
 
@@ -27,5 +27,5 @@ start_child(TcpTx) ->
 %% ===================================================================
 
 init([]) ->
-    {ok, { {simple_one_for_one, 5, 10}, [?CHILD(smpp34_pdurx, worker)]} }.
+    {ok, { {simple_one_for_one, 5, 10}, [?CHILD(smpp34_rx, worker)]} }.
 
