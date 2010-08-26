@@ -4,7 +4,7 @@
 -behaviour(gen_server).
 
 -export([start_link/3,stop/1]).
--export([ping/1, deliver/2]).
+-export([ping/1, deliver/2, controll_socket/2]).
 
 -export([init/1,
         handle_call/3,
@@ -24,6 +24,10 @@ stop(Pid) ->
 ping(Pid) ->
 	gen_server:call(Pid, ping).
 
+controll_socket(Pid, Socket) ->
+	{ok, Rx} = gen_server:call(Pid, getrx),
+	gen_tcp:controlling_process(Socket, Rx).
+
 deliver(_, []) ->
 	ok;
 deliver(Pid, [Head|Rest]) ->
@@ -38,6 +42,8 @@ init([Owner, Tx, Socket]) ->
 	RxMref = erlang:monitor(process, Rx),
     {ok, #state{owner=Owner, mref=MRef, tx=Tx, rx=Rx, rx_mref=RxMref}}.
 
+handle_call(getrx, _From, #state{rx=Rx}=St) ->
+	{reply, {ok, Rx}, St};
 handle_call(ping, _From, #state{owner=Owner, tx=Tx, rx=Rx}=St) ->
 	{reply, {pong, [{owner,Owner}, {tx,Tx}, {rx, Rx}]}, St};
 handle_call(Req, _From, St) ->
