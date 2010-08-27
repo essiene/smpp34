@@ -9,7 +9,8 @@
 
 -record(st, {tx, tx_mref, 
 		     rx, rx_mref,
-			 ets, params}).
+			 ets, params,
+			 socket}).
 
 %% ------------------------------------------------------------------
 %% API Function Exports
@@ -35,11 +36,13 @@ connect(Host, Port) ->
 %% ------------------------------------------------------------------
 
 init([Host, Port]) ->
-	St0 = #st{},
+	St = #st{},
 	case gen_tcp:connect(Host, Port, ?SOCK_OPTS) of
 		{error, Reason} ->
 			{stop, Reason};
 		{ok, Socket} ->
+			St0 = St#st{socket=Socket},
+
 			case smpp34_tx_sup:start_child(Socket) of
 				{error, Reason} ->
 					{stop, Reason};
