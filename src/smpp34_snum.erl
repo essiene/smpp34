@@ -55,7 +55,7 @@ handle_info(#'DOWN'{ref=MonitorRef}, #state{monitref=MonitorRef}=St) ->
 handle_info(_Req, St) ->
     {noreply, St}.
 
-terminate(normal, _St) ->
+terminate(_, _) ->
     ok.
 
 code_change(_OldVsn, St, _Extra) ->
