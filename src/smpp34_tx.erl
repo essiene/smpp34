@@ -35,10 +35,14 @@ ping(Pid) ->
 
 init([Owner, Socket]) ->
 	MonitorRef = erlang:monitor(process, Owner),
-	{ok, Snum} = smpp34_snum_sup:start_child(),
-	SnumMonitRef = erlang:monitor(process, Snum),
-    {ok, #state{owner=Owner, monitref=MonitorRef, socket=Socket,
-				   snum=Snum, snum_monitref=SnumMonitRef}}.
+	case smpp34_snum_sup:start_child() of
+		{error, Reason} ->
+			{stop, Reason};
+		{ok, Snum} ->
+			SnumMonitRef = erlang:monitor(process, Snum),
+			{ok, #state{owner=Owner, monitref=MonitorRef, socket=Socket,
+						   snum=Snum, snum_monitref=SnumMonitRef}}
+	end.
 
 handle_call(ping, _From, #state{owner=Owner, socket=Socket, snum=Snum}=St) ->
 	{reply, {pong, [{owner, Owner}, {socket, Socket}, {snum, Snum}]}, St};

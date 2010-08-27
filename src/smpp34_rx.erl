@@ -39,12 +39,16 @@ deliver(Pid, Pdu) ->
 init([Owner, Tx, Socket]) ->
 	MRef = erlang:monitor(process, Owner),
 	TxMref = erlang:monitor(process, Tx),
-	{ok, Rx} = smpp34_tcprx_sup:start_child(Socket),
-	RxMref = erlang:monitor(process, Rx),
-    {ok, 
-		#state{owner=Owner, mref=MRef, 
-			   tx=Tx, tx_mref=TxMref,
-			   rx=Rx, rx_mref=RxMref}}.
+	case smpp34_tcprx_sup:start_child(Socket) of
+		{error, Reason} ->
+			{stop, Reason};
+		{ok, Rx} ->
+			RxMref = erlang:monitor(process, Rx),
+			{ok, 
+				#state{owner=Owner, mref=MRef, 
+					   tx=Tx, tx_mref=TxMref,
+					   rx=Rx, rx_mref=RxMref}}
+	end.
 
 handle_call(getrx, _From, #state{rx=Rx}=St) ->
 	{reply, {ok, Rx}, St};
