@@ -17,7 +17,7 @@
 %% API Function Exports
 %% ------------------------------------------------------------------
 
--export([connect/2]).
+-export([connect/2, close/1]).
 
 %% ------------------------------------------------------------------
 %% gen_fsm Function Exports
@@ -31,6 +31,9 @@
 
 connect(Host, Port) ->
   gen_fsm:start(?MODULE, [Host, Port], []).
+
+close(Pid) ->
+	gen_fsm:sync_send_all_state_event(Pid, close).
 
 %% ------------------------------------------------------------------
 %% gen_fsm Function Definitions
@@ -83,6 +86,11 @@ closed(_Event, _From, St) ->
 handle_event(_Event, StateName, St) ->
   {next_state, StateName, St}.
 
+handle_sync_event(close, _From, closed, St) ->
+	{reply, {error, closed}, closed, St};
+handle_sync_event(close, _From, _, St) ->
+	do_stop(close, St),
+	{reply, ok, closed, St#st{close_reason=closed}};
 handle_sync_event(_Event, _From, StateName, St) ->
   {reply, ok, StateName, St}.
 
