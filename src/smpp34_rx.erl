@@ -37,6 +37,7 @@ deliver(Pid, Pdu) ->
 	gen_server:cast(Pid, {self(), Pdu}).
 
 init([Owner, Tx, Socket]) ->
+	process_flag(trap_exit, true),
 	MRef = erlang:monitor(process, Owner),
 	TxMref = erlang:monitor(process, Tx),
 	case smpp34_tcprx_sup:start_child(Socket) of
@@ -95,7 +96,7 @@ code_change(_OldVsn, St, _Extra) ->
 tx_send(undefined, _, _, _) ->
 	ok;
 tx_send(Tx, Status, Snum, Body) ->
-	smpp34_tx:send(Tx, Status, Snum, Body).
+	catch(smpp34_tx:send(Tx, Status, Snum, Body)).
 
 owner_send(Owner, Pdu) ->
 	Owner ! {self(), Pdu}.

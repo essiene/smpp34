@@ -22,6 +22,7 @@ stop(Pid) ->
     gen_server:cast(Pid, stop).
 
 init([Owner, Socket, PduSink]) ->
+	process_flag(trap_exit, true),
 	Mref = erlang:monitor(process, Owner),
     {ok, #state{owner=Owner, mref=Mref, socket=Socket,
 				   pdusink=PduSink, data = <<>>}}.

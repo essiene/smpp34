@@ -31,6 +31,7 @@ ping(Pid) ->
 
 
 init([Owner, Start]) ->
+	process_flag(trap_exit, true),
 	MonitorRef = erlang:monitor(process, Owner),
     {ok, #state{owner=Owner, count=Start, monitref=MonitorRef}}.
 
