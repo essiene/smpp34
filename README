@@ -1,0 +1,66 @@
+smpp34 is an SMPP 3.4 library in Erlang
+
+It is designed to be used along with smpp34pdu library for
+SMPP 3.4 communications.
+
+It uses smpp34pdu to handle wire-level packing and unpacking,
+and instead focuses on the task of actually setting up the 
+communication infrastructure as defined by the protocol.
+
+It is a re-write of an internal existing smpp library and is
+written to solve the problems encountered with said library.
+
+It is in its earliest days right now, and just the core framework
+has been setup. 
+
+
+Example Usage
+=============
+
+When completed, an example of a simple client session will be:
+
+-module(smpp34_example).
+-export([start/0]).
+
+% We need to include the smpp34pdu PDU record definitions
+-include_lib("smpp34pdu/include/smpp34pdu.hrl").
+
+
+start() ->
+	
+	% first start the smpp34 library application
+	smpp34:start().
+
+	% Then connect to an SMSC to obtain an ESME object
+	{ok, Esme} = smpp34_esme:connect("localhost", 10001),
+
+	% Bind as a transceiver
+	TrxPdu = #bind_transceiver{system_id="username", password="password"},
+	ok = smpp34_esme:send(Esme, TrxPdu),
+
+	% Retrieve our response
+	{ok, #pdu{}=RespPdu} = smpp34_esme:recv(Esme),
+
+	%close the connection
+	smpp34_esme:close(Esme).
+
+
+
+gen_esme
+========
+
+while smpp34_esme will be good for direct interactions, it will not fit very
+well when building an ESME server akin to Kannel.
+
+This library will provide an OTP compatible behaviour 'gen_esme' for allowing
+users to simply build such a contraption.
+
+
+Status
+======
+
+smpp34:start/0 - Yes
+smpp34_esme:connect/2 - Yes
+smpp34_esme:close/1 - Yes
+smpp34_esme:send/2 -  No
+smpp34_esme:recv/1 - No
