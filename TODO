@@ -1,12 +1,6 @@
-The dependencies b/w the different components should actually also guide the
-monitoring and cleanup activities when the DOWN message is received, so for
-instance, the PDURX should send #unbind{} if any other process dies, but if the
-TcpTX dies, there's no need, since the TcpTx will already have died.
-
-
 We need to implement response timeouts. For instance, after sending a PDU,
 we should expect a response pdu (if the protocol defines it) in a particular
 interval, after which, we should timeout and consider that request as failed.
 A typical example of where the absense of this can result in a problem is during
 unbind. If we initiate an unbind, we normally should wait for an unbind_resp{} 
-from the SMSC before we shutdown. We should not wait for all eternity... ;)
+from the SMSC before we shutdown RX. We should not wait for all eternity... ;)
