@@ -10,7 +10,8 @@
 -record(st, {tx, tx_mref, 
 		     rx, rx_mref,
 			 ets, params,
-			 socket}).
+			 socket,
+			 close_reason}).
 
 %% ------------------------------------------------------------------
 %% API Function Exports
@@ -88,11 +89,17 @@ handle_sync_event(_Event, _From, StateName, St) ->
 handle_info({Rx, Pdu}, StateName, #st{rx=Rx}=St) ->
   error_logger:info_msg("ESME PDU> ~p~n", [Pdu]),
   {next_state, StateName, St};
+handle_info(#'DOWN'{ref=MRef, reason=R}, _, #st{tx_mref=MRef}=St) ->
+  do_stop(tx, St),
+  {next_state, closed, St#st{close_reason=R}};
+handle_info(#'DOWN'{ref=MRef, reason=R}, _, #st{rx_mref=MRef}=St) ->
+  do_stop(rx, St),
+  {next_state, closed, St#st{close_reason=R}};
 handle_info(_Info, StateName, St) ->
   {next_state, StateName, St}.
 
-terminate(_Reason, _StateName, _St) ->
-  ok.
+terminate(_, _, _) ->
+ ok.
 
 code_change(_OldVsn, StateName, St, _Extra) ->
   {ok, StateName, St}.
