@@ -36,6 +36,7 @@ connect(Host, Port) ->
 %% ------------------------------------------------------------------
 
 init([Host, Port]) ->
+	process_flag(trap_exit, true),
 	St = #st{},
 	case gen_tcp:connect(Host, Port, ?SOCK_OPTS) of
 		{error, Reason} ->
