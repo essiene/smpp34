@@ -101,3 +101,10 @@ code_change(_OldVsn, StateName, St, _Extra) ->
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
 
+do_stop(close, #st{tx=Tx, rx=Rx}) ->
+	catch(smpp34_tx:stop(Tx)),
+	catch(smpp34_rx:stop(Rx));
+do_stop(rx, #st{tx=Tx}) ->
+	catch(smpp34_tx:stop(Tx));
+do_stop(tx, #st{socket=S}) ->
+	catch(gen_tcp:close(S)).
