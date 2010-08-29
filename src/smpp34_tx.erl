@@ -34,6 +34,7 @@ ping(Pid) ->
 
 
 init([Owner, Socket]) ->
+	process_flag(trap_exit, true),
 	MonitorRef = erlang:monitor(process, Owner),
 	case smpp34_snum_sup:start_child() of
 		{error, Reason} ->
@@ -66,13 +67,15 @@ handle_cast(_Req, St) ->
 
 handle_info(#'DOWN'{ref=MonitorRef}, #state{monitref=MonitorRef}=St) ->
 	{stop, normal, St};
-handle_info(#'DOWN'{ref=SnumMonitRef}, #state{snum_monitref=SnumMonitRef}=St) ->
-	{stop, normal, St};
+handle_info(#'DOWN'{ref=SnumMonitRef, reason=R}, #state{snum_monitref=SnumMonitRef}=St) ->
+	{stop, {snum, R}, St};
 handle_info(_Req, St) ->
 	{noreply, St}.
 
-terminate(_Reason, _St) ->
-    ok.
+terminate(_, #state{current=C, socket=S}) ->
+	Bin = smpp34pdu:pack(?ESME_ROK, C+1, #unbind{}),
+	catch(gen_tcp:send(S, Bin)),
+	ok.
 
 code_change(_OldVsn, St, _Extra) ->
     {noreply, St}.
