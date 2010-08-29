@@ -49,24 +49,21 @@ The relationship can be represented like:
     + rx
 	    + tcprx
 
-process | source | data type
-=============================
-esme    | rx     | #pdu{}
-tx      | snum   | sequence_numbers
-tx      | rx     | #pdu{}
-tx      | esme   | #pdu{}
-rx      | tcprx  | #pdu{}
-tcprx   | NETWORK| binary pdu
-snum    |        |
+The table below shows the various processes and the data flows and
+transformations that take place between them
 
-process | sink   |  data type
-=============================
-esme    | tx     |  #pdu{}
-tx      | NETWORK| binary pdu
-rx      | tx     |  #pdu{}
-rx      | esme   |  #pdu{}
-tcprx   | rx     |  #pdu{}
-snum    | tx     |  sequence_numbers
+process | input process | input datatype | output process | output datatype
+===========================================================================
+esme    | rx            | #pdu{}         | USERSPACE      | #pdu{}
+esme    | USERSPACE     | #pdu{}         | tx             | #pdu{}
+tx      | snum          | sequence_nums  |                |
+tx      | esme          | #pdu{}         | NETWORK        | <<pdu>>
+tx      | rx            | #pdu{}         | NETWORK        | <<pdu>>
+rx      | tcprx         | #pdu{}         | esme           | #pdu{}
+rx      | tcprx         | #pdu{}         | tx             | #pdu{}
+tcprx   | NETWORK       | <<pdu>>        | rx             | #pdu{}
+snum    |               |                | tx             | sequence_nums
+
 
 Supervision Tree
 ================
@@ -111,14 +108,31 @@ process does.
 Startup Sequence
 ================
 
-The startup sequence is as follows:
+The startup sequence respects the process relationship previously shown 
 
-esme -> tx [-> snum] -> rx [-> tcprx]
++ esme
+    + tx
+	    + snum
+    + rx
+	    + tcprx
 
+The esme will start the tx, which in turn starts it's private snum.
+Then the esme will start the rx, which in turn starts it's private tcprx.
+
+During startup, any errors encountered, will be reported all the way back to the
+esme.
 
 
 Monitoring Relationship
 =======================
+
+The proper functioning of the various processes depends on knowing when any
+other process in its pipeline has died, so the process in question can take
+appropriate action. 
+
+The result of this is the following monitoring relationship. The arrow direction
+shows points to what is being monitored from the "what" that is doing the
+monitoring.
 
 esme -> tx, rx
      tx -> esme, snum
@@ -130,21 +144,102 @@ esme -> tx, rx
 The Kiss Of Death
 =================
 
-On of the reasons for structuring the monitoring relationship this way, is to
-have an easy clear and preditable set of actions when components begin to die.
+Combining the supervision tree and the monitoring relationships results in a
+precise and intricate relationship between the various modules and their
+supervisors.
 
-The core principle is to make certain modules responsible for certain cleanup
-actions, and then ensure that the monitoring relationship enables this approach.
+These relationships actually translate into a few definite ways in which death
+can occur. smpp34 teardown is designed around these explicity and specific
+instances.
 
-The following are the possible scenarios.
+In addition to this, each module is primarily responsible for specific cleanup
+actions and the particular cleanup action depends on what is triggering that
+particular death.
 
-1.
+The details are as follows:
 
+1. tcprx
+=========
+	a. supervisor shutdown
+		- terminate will be called with reason 'shutdown'
+		- nothing extra, just die
+	b. esme initiated shutdown
+		- stop with reason normal
+	c. rx dies
+		- stop with reason normal
+	d. internal exception
+		- allow reason to bubble and be logged
+	e. socket closed by remote
+	    - stop with reason 'tcp_closed'
+	f. socket error 
+	    - stop with reason 'tcp_error'
 
+2. snum
+=======
+	a. supervisor shutdown
+		- terminate will be called with reason 'shutdown'
+		- nothing extra, just die
+	b. esme initiated shutdown
+		- stop with reason normal
+	c. tx dies
+		- stop with reason normal
+	d. internal exception
+		- allow reason to bubble and be logged
 
+3. rx
+=======
+	a. supervisor shutdown
+		- terminate will be called with reason 'shutdown'
+		- nothing extra, just die
+	b. esme initiated shutdown
+		- stop with reason normal
+	c. esme dies
+	    - stop with reason normal
+	c. tx dies
+		- stop with reason normal
+	d. tcprx dies
+		- stop with reason {tcprx, Reason}
+		- this will bubble up to esme for possible informing of userspace
+	e. SMSC sends #unbind{}
+		- we're being asked to unbind
+		- stop with reason 'unbind'
+	f. SMSC sends #unbind_response{}
+		- we're being given a response to a previous 'unbind' we sent
+		- stop with reason 'unbind_response'
+	e. internal exception
+	  	- allow reason to bubble and be logged 
 
+4. tx
+=======
+	a. supervisor shutdown
+		- terminate will be called with reason 'shutdown'
+		- send #unbind{} to SMSC
+	b. esme initiated shutdown
+		- send #unbind{} to SMSC
+		- stop with reason normal
+	c. esme dies
+		- send #unbind{} to SMSC
+	    - stop with reason normal
+	d. snum dies
+		- send #unbind{} to SMSC
+		- stop with reason {snum, Reason}
+		- this will bubble up to esme for possible informing of userspace
+	e. internal exception
+		- send #unbind{} to SMSC
+	  	- allow reason to bubble and be logged 
 
-
-
-
-
+5. esme
+=======
+	a. supervisor shutdown
+		- terminate will be called with reason 'shutdown'
+		- nothing extra, just die
+	b. esme initiated shutdown
+		- stop with reason normal
+	c. rx dies
+		- close tx
+		- change state to closed
+	d. tx dies
+		- close rx
+		- change state to closed
+	d. internal exception
+		- allow reason to bubble and be logged
