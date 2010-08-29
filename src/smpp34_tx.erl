@@ -14,7 +14,7 @@
         code_change/3]).
 
 
--record(state, {owner,monitref,socket,snum, snum_monitref}).
+-record(state, {owner,monitref,socket,snum, snum_monitref, current=0}).
 
 start_link(Owner, Socket) ->
     gen_server:start_link(?MODULE, [Owner, Socket], []).
@@ -51,7 +51,7 @@ handle_call({send, Status, Body}, _From,
 	{ok, Num} = smpp34_snum:next(Snum),
 	Bin = smpp34pdu:pack(Status, Num, Body),
 	ok = gen_tcp:send(Socket, Bin),
-	{reply, {ok, Num}, St};
+	{reply, {ok, Num}, St#state{current=Num}};
 handle_call({send, Status, Num, Body},_From, #state{socket=Socket}=St)->
 	Bin = smpp34pdu:pack(Status, Num, Body),
 	ok = gen_tcp:send(Socket, Bin),
