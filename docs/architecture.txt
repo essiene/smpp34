@@ -163,7 +163,7 @@ The details are as follows:
 	a. supervisor shutdown
 		- terminate will be called with reason 'shutdown'
 		- nothing extra, just die
-	b. esme initiated shutdown
+	b. tcprx:stop is called
 		- stop with reason normal
 	c. rx dies
 		- stop with reason normal
@@ -179,7 +179,7 @@ The details are as follows:
 	a. supervisor shutdown
 		- terminate will be called with reason 'shutdown'
 		- nothing extra, just die
-	b. esme initiated shutdown
+	b. snum:stop is called
 		- stop with reason normal
 	c. tx dies
 		- stop with reason normal
@@ -191,7 +191,7 @@ The details are as follows:
 	a. supervisor shutdown
 		- terminate will be called with reason 'shutdown'
 		- nothing extra, just die
-	b. esme initiated shutdown
+	b. rx:stop is called
 		- stop with reason normal
 	c. esme dies
 	    - stop with reason normal
@@ -202,10 +202,11 @@ The details are as follows:
 		- this will bubble up to esme for possible informing of userspace
 	e. SMSC sends #unbind{}
 		- we're being asked to unbind
+		- Send #unbind_resp{} back to SMSC
 		- stop with reason 'unbind'
 	f. SMSC sends #unbind_response{}
 		- we're being given a response to a previous 'unbind' we sent
-		- stop with reason 'unbind_response'
+		- stop with reason 'unbind_resp'
 	e. internal exception
 	  	- allow reason to bubble and be logged 
 
@@ -214,7 +215,7 @@ The details are as follows:
 	a. supervisor shutdown
 		- terminate will be called with reason 'shutdown'
 		- send #unbind{} to SMSC
-	b. esme initiated shutdown
+	b. tx:stop is called
 		- send #unbind{} to SMSC
 		- stop with reason normal
 	c. esme dies
@@ -233,13 +234,15 @@ The details are as follows:
 	a. supervisor shutdown
 		- terminate will be called with reason 'shutdown'
 		- nothing extra, just die
-	b. esme initiated shutdown
-		- stop with reason normal
+	b. esme:close is called
+		- close tx
+		- close rx
+		- change state to closed
 	c. rx dies
 		- close tx
 		- change state to closed
 	d. tx dies
-		- close rx
+		- close socket
 		- change state to closed
 	d. internal exception
 		- allow reason to bubble and be logged
