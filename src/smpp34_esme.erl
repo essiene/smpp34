@@ -80,8 +80,10 @@ init([Host, Port]) ->
 closed(_Event, St) ->
   {next_state, closed, St}.
 
-closed(_Event, _From, St) ->
-  {reply, {error, closed}, closed, St}.
+closed(_Event, _From, #st{close_reason={error, R}}=St) ->
+  {reply, {error, R}, closed, St};
+closed(_Event, _From, #st{close_reason=R}=St) ->
+  {reply, {error, R}, closed, St}.
 
 handle_event(_Event, StateName, St) ->
   {next_state, StateName, St}.
