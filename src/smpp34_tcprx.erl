@@ -54,7 +54,15 @@ handle_info(#'DOWN'{ref=Mref}, #state{mref=Mref}=St) ->
 handle_info(_Req, St) ->
 	{noreply, St}.
 
-terminate(_, _) ->
+terminate(_, #state{socket=S}) ->
+	% We are the controlling_process, so the socket will be
+	% closed when we exit. We have to send #unbind{} here
+
+	% Since we're quitting, just plunk in the maximum serial number
+	% untill we find a better way to interact with smpp34_tx to
+	% get the valid current serial number
+	Bin = smpp34pdu:pack(?ESME_ROK, ?SNUM_MAX, #unbind{}),
+	catch(gen_tcp:send(S, Bin)),
     ok.
 
 code_change(_OldVsn, St, _Extra) ->
