@@ -17,13 +17,13 @@
 %% API Function Exports
 %% ------------------------------------------------------------------
 
--export([connect/2, close/1]).
+-export([connect/2, close/1, send/2, send/3]).
 
 %% ------------------------------------------------------------------
 %% gen_fsm Function Exports
 %% ------------------------------------------------------------------
 
--export([init/1, closed/2, closed/3, handle_event/3, handle_sync_event/4, handle_info/3, terminate/3, code_change/4]).
+-export([init/1, open/2, closed/2, open/3, closed/3, handle_event/3, handle_sync_event/4, handle_info/3, terminate/3, code_change/4]).
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
@@ -34,6 +34,12 @@ connect(Host, Port) ->
 
 close(Pid) ->
 	gen_fsm:sync_send_all_state_event(Pid, close).
+
+send(Pid, Body) ->
+	send(Pid, ?ESME_ROK, Body).
+
+send(Pid, Status, Body) ->
+	gen_fsm:sync_send_event(Pid, {tx, Status, Body}).
 
 %% ------------------------------------------------------------------
 %% gen_fsm Function Definitions
@@ -76,9 +82,18 @@ init([Host, Port]) ->
 					end
 			end
 	end.
+
+open(_Event, St) ->
+  {next_state, open, St}.
  
 closed(_Event, St) ->
   {next_state, closed, St}.
+
+
+open({tx, Status, Body}, _From, #st{tx=Tx}=St) ->
+  {reply, catch(smpp34_tx:send(Tx, Status, Body)), open, St};
+open(_Event, _From, St) ->
+  {reply, {error, _Event}, open, St}.
 
 closed(_Event, _From, #st{close_reason={error, R}}=St) ->
   {reply, {error, R}, closed, St};
