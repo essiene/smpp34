@@ -14,7 +14,7 @@
         code_change/3]).
 
 
--record(state, {owner,monitref,socket,snum, snum_monitref, current=0}).
+-record(state, {owner,monitref,socket,snum, snum_monitref}).
 
 start_link(Owner, Socket) ->
     gen_server:start_link(?MODULE, [Owner, Socket], []).
@@ -52,7 +52,7 @@ handle_call({send, Status, Body}, _From,
 	{ok, Num} = smpp34_snum:next(Snum),
 	Bin = smpp34pdu:pack(Status, Num, Body),
 	ok = gen_tcp:send(Socket, Bin),
-	{reply, {ok, Num}, St#state{current=Num}};
+	{reply, {ok, Num}, St};
 handle_call({send, Status, Num, Body},_From, #state{socket=Socket}=St)->
 	Bin = smpp34pdu:pack(Status, Num, Body),
 	ok = gen_tcp:send(Socket, Bin),
@@ -72,9 +72,7 @@ handle_info(#'DOWN'{ref=SnumMonitRef, reason=R}, #state{snum_monitref=SnumMonitR
 handle_info(_Req, St) ->
 	{noreply, St}.
 
-terminate(_, #state{current=C, socket=S}) ->
-	Bin = smpp34pdu:pack(?ESME_ROK, C+1, #unbind{}),
-	catch(gen_tcp:send(S, Bin)),
+terminate(_, _) ->
 	ok.
 
 code_change(_OldVsn, St, _Extra) ->
