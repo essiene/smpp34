@@ -37,7 +37,7 @@ init([Owner, Start]) ->
 
 handle_call(ping, _From, #state{owner=Owner, count=Count}=St) ->
 	{reply, {pong, [{owner=Owner}, {count,Count}]}, St};
-handle_call(next, _From, #state{count=16#7fffffff}=St) ->
+handle_call(next, _From, #state{count=?SNUM_MAX}=St) ->
     N1 = 1,
     {reply, {ok, N1}, St#state{count=N1}};
 handle_call(next, _From, #state{count=N}=St) ->
