@@ -127,7 +127,8 @@ handle_info(#'DOWN'{ref=MRef, reason=R}, _, #st{rx_mref=MRef}=St) ->
 handle_info(_Info, StateName, St) ->
   {next_state, StateName, St}.
 
-terminate(_, _, _) ->
+terminate(_, _, #st{ets=Ets}) ->
+ ets:delete(Ets),
  ok.
 
 code_change(_OldVsn, StateName, St, _Extra) ->
