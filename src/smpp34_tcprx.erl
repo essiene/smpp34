@@ -13,7 +13,7 @@
         code_change/3]).
 
 
--record(state, {owner,mref,socket,pdusink,data}).
+-record(state, {owner,mref,socket,pdusink,data, send_unbind=true}).
 
 start_link(Owner, Socket, PduSink) ->
     gen_server:start_link(?MODULE, [Owner, Socket, PduSink], []).
@@ -49,11 +49,18 @@ handle_info({tcp_error, Socket, Reason}, #state{socket=Socket}=St) ->
 	% the monitoring process will also bail.
 
 	{stop, {tcp_error, Reason}, St};
+handle_info(#'DOWN'{ref=Mref, reason=unbind}, #state{mref=Mref, send_unbind=false}=St) ->
+	{stop, normal, St};
+handle_info(#'DOWN'{ref=Mref, reason=unbind_resp}, #state{mref=Mref, send_unbind=false}=St) ->
+	{stop, normal, St};
 handle_info(#'DOWN'{ref=Mref}, #state{mref=Mref}=St) ->
 	{stop, normal, St};
 handle_info(_Req, St) ->
 	{noreply, St}.
 
+terminate(_, #state{socket=S, send_unbind=false}) ->
+	catch(gen_tcp:close(S)),
+    ok;
 terminate(_, #state{socket=S}) ->
 	% We are the controlling_process, so the socket will be
 	% closed when we exit. We have to send #unbind{} here
@@ -63,6 +70,7 @@ terminate(_, #state{socket=S}) ->
 	% get the valid current serial number
 	Bin = smpp34pdu:pack(?ESME_ROK, ?SNUM_MAX, #unbind{}),
 	catch(gen_tcp:send(S, Bin)),
+	catch(gen_tcp:close(S)),
     ok.
 
 code_change(_OldVsn, St, _Extra) ->

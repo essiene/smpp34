@@ -78,6 +78,8 @@ The tree is described next.
 
 + smpp34_app
     + smpp34_sup [one_for_one]
+		+ smpp34_esme_sup [simple_one_for_one]
+		    + smpp34_esme [temporary]
 		+ smpp34_tx_sup [simple_one_for_one]
 			+ smpp34_tx [temporary]
 		+ smpp34_rx_sup [simple_one_for_one]
@@ -92,6 +94,7 @@ In the illustration shown, the smpp34_app is the application callback which
 starts the smpp34_sup the top-level supervisor (a one_for_one supervisor).
 
 smpp34_sup starts all the other supervisors:
+	smpp34_esme_sup
 	smpp34_tx_sup
 	smpp34_rx_sup
 	smpp34_tcprx_sup
@@ -102,7 +105,7 @@ These next level of supervisors are all simple_one_for_one supervisors.
 Once all these are started, the smpp34 library is ready to be used. Using
 the library then just involves asking the second level supervisors to 
 start an instance of their child_spec. This is exactly what the esme
-process does.
+process does (when it is started by its own supervisor).
 
 
 Startup Sequence
@@ -134,7 +137,7 @@ The result of this is the following monitoring relationship. The arrow direction
 shows points to what is being monitored from the "what" that is doing the
 monitoring.
 
-esme -> tx, rx
+esme -> USER, tx, rx
      tx -> esme, snum
 	    snum -> tx
 	 rx -> esme, tx, tcprx
@@ -162,12 +165,25 @@ The details are as follows:
 =========
 	a. supervisor shutdown
 		- terminate will be called with reason 'shutdown'
-		- nothing extra, just die
+		- send #unbind{} PDU
+		- close Socket and die
 	b. tcprx:stop is called
+		- send #unbind{} PDU
+		- close Socket
 		- stop with reason normal
-	c. rx dies
+	c1. rx dies with reason 'unbind'
+		- close Socket
+		- stop with reason normal
+	c2. rx dies with reason 'unbind_resp'
+		- close Socket
+		- stop with reason normal
+	c3. rx dies
+		- send #unbind{} PDU
+		- close Socket
 		- stop with reason normal
 	d. internal exception
+		- send #unbind{} PDU
+		- close Socket
 		- allow reason to bubble and be logged
 	e. socket closed by remote
 	    - stop with reason 'tcp_closed'
@@ -214,19 +230,14 @@ The details are as follows:
 =======
 	a. supervisor shutdown
 		- terminate will be called with reason 'shutdown'
-		- send #unbind{} to SMSC
 	b. tx:stop is called
-		- send #unbind{} to SMSC
 		- stop with reason normal
 	c. esme dies
-		- send #unbind{} to SMSC
 	    - stop with reason normal
 	d. snum dies
-		- send #unbind{} to SMSC
 		- stop with reason {snum, Reason}
 		- this will bubble up to esme for possible informing of userspace
 	e. internal exception
-		- send #unbind{} to SMSC
 	  	- allow reason to bubble and be logged 
 
 5. esme
@@ -242,7 +253,9 @@ The details are as follows:
 		- close tx
 		- change state to closed
 	d. tx dies
-		- close socket
+		- close rx 
 		- change state to closed
 	d. internal exception
 		- allow reason to bubble and be logged
+	e. Calling process dies
+		- stop with calling process reason
