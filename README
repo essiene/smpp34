@@ -62,5 +62,5 @@ Status
 smpp34:start/0 - Yes
 smpp34_esme:connect/2 - Yes
 smpp34_esme:close/1 - Yes
-smpp34_esme:send/2 -  No
+smpp34_esme:send/2 -  Yes
 smpp34_esme:recv/1 - No
