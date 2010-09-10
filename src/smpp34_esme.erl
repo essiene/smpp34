@@ -7,7 +7,8 @@
 -define(ETS_OPTS, [ordered_set, private, {keypos, 2}]).
 -define(SOCK_OPTS, [binary, {packet, raw}, {active, once}]).
 
--record(st, {tx, tx_mref, 
+-record(st, {owner, mref,
+			 tx, tx_mref, 
 		     rx, rx_mref,
 			 ets, params,
 			 socket,
@@ -17,7 +18,7 @@
 %% API Function Exports
 %% ------------------------------------------------------------------
 
--export([connect/2, close/1, send/2, send/3]).
+-export([start_link/3, connect/2, close/1, send/2, send/3]).
 
 %% ------------------------------------------------------------------
 %% gen_fsm Function Exports
@@ -29,8 +30,11 @@
 %% API Function Definitions
 %% ------------------------------------------------------------------
 
+start_link(Owner, Host, Port) ->
+  gen_fsm:start(?MODULE, [Owner, Host, Port], []).
+
 connect(Host, Port) ->
-  gen_fsm:start(?MODULE, [Host, Port], []).
+  smpp34_esme_sup:start_child(Host, Port).
 
 close(Pid) ->
 	gen_fsm:sync_send_all_state_event(Pid, close).
@@ -45,9 +49,10 @@ send(Pid, Status, Body) ->
 %% gen_fsm Function Definitions
 %% ------------------------------------------------------------------
 
-init([Host, Port]) ->
+init([Owner, Host, Port]) ->
 	process_flag(trap_exit, true),
-	St = #st{},
+	Mref = erlang:monitor(process, Owner),
+	St = #st{owner=Owner, mref=Mref},
 	case gen_tcp:connect(Host, Port, ?SOCK_OPTS) of
 		{error, Reason} ->
 			{stop, Reason};
@@ -118,6 +123,8 @@ handle_info({Rx, Pdu}, StateName, #st{rx=Rx}=St) ->
   {next_state, StateName, St};
 handle_info(#'DOWN'{reason=normal}, _, St) ->
   {next_state, closed, St};
+handle_info(#'DOWN'{ref=MRef, reason=R}, _, #st{mref=MRef}=St) ->
+  {stop, R, St};
 handle_info(#'DOWN'{ref=MRef, reason=R}, _, #st{tx_mref=MRef}=St) ->
   do_stop(tx, St),
   {next_state, closed, St#st{close_reason=R}};
@@ -143,5 +150,5 @@ do_stop(close, #st{tx=Tx, rx=Rx}) ->
 	catch(smpp34_rx:stop(Rx));
 do_stop(rx, #st{tx=Tx}) ->
 	catch(smpp34_tx:stop(Tx));
-do_stop(tx, #st{socket=S}) ->
-	catch(gen_tcp:close(S)).
+do_stop(tx, #st{rx=Rx}) ->
+	catch(smpp34_rx:stop(Rx)).
