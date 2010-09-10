@@ -95,6 +95,8 @@ open({tx, Status, Body}, _From, #st{tx=Tx}=St) ->
 open(_Event, _From, St) ->
   {reply, {error, _Event}, open, St}.
 
+closed(_Event, _From, #st{close_reason=undefined}=St) ->
+  {reply, {error, closed}, closed, St};
 closed(_Event, _From, #st{close_reason={error, R}}=St) ->
   {reply, {error, R}, closed, St};
 closed(_Event, _From, #st{close_reason=R}=St) ->
@@ -107,13 +109,15 @@ handle_sync_event(close, _From, closed, St) ->
 	{reply, {error, closed}, closed, St};
 handle_sync_event(close, _From, _, St) ->
 	do_stop(close, St),
-	{reply, ok, closed, St#st{close_reason=closed}};
+	{reply, ok, closed, St};
 handle_sync_event(_Event, _From, StateName, St) ->
   {reply, ok, StateName, St}.
 
 handle_info({Rx, Pdu}, StateName, #st{rx=Rx}=St) ->
   error_logger:info_msg("ESME PDU> ~p~n", [Pdu]),
   {next_state, StateName, St};
+handle_info(#'DOWN'{reason=normal}, _, St) ->
+  {next_state, closed, St};
 handle_info(#'DOWN'{ref=MRef, reason=R}, _, #st{tx_mref=MRef}=St) ->
   do_stop(tx, St),
   {next_state, closed, St#st{close_reason=R}};
