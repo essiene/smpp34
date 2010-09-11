@@ -32,6 +32,13 @@ send(Pid, Body) ->
 send(Pid, Status, Body) ->
 	gen_server:call(Pid, {send, Status, Body}).
 
+recv(Pid) ->
+	% by default block forever till response comes back
+	gen_server:call(Pid, {recv, infinity}, infinity).
+
+recv(Pid, Timeout) ->
+	gen_server:call(Pid, {recv, Timeout}, Timeout).
+
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
 %% ------------------------------------------------------------------
