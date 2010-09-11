@@ -79,7 +79,7 @@ handle_cast(_Req, St) ->
 handle_info(#'DOWN'{ref=MRef}, #state{tx_mref=MRef}=St) ->
 	{noreply, St#state{tx=undefined, tx_mref=undefined}};
 handle_info(#'DOWN'{ref=MRef, reason=R}, #state{rx_mref=MRef}=St) ->
-	{stop, {tcprx, R}, St};
+	{stop, R, St};
 handle_info(#'DOWN'{ref=MRef}, #state{mref=MRef}=St) ->
 	{stop, normal, St};
 handle_info(_Req, St) ->
