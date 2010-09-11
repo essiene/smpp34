@@ -4,10 +4,3 @@ interval, after which, we should timeout and consider that request as failed.
 A typical example of where the absense of this can result in a problem is during
 unbind. If we initiate an unbind, we normally should wait for an unbind_resp{} 
 from the SMSC before we shutdown RX. We should not wait for all eternity... ;)
-
-
-Currently, esme_core insulates its users from the lowe layer deaths. This should
-change as it is a residue of the previous design where esme_core was part of the
-userspace API. For now, esme_core should no more be a gen_fsm. It should be a
-plain gen_server and the layers above it should be gen_fsms. It should also
-cascade it's death upwards, so we don't get stuck indefinitely above.
