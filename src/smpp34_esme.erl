@@ -61,6 +61,9 @@ handle_call({send, Body}, _F, #st{esme=E}=St) ->
   {reply, smpp34_esme_core:send(E, Body), St};
 handle_call({send, Status, Body}, _F, #st{esme=E}=St) ->
   {reply, smpp34_esme_core:send(E, Status, Body), St};
+handle_call({recv, Timeout}, From, St) ->
+	Item = dkq:item(Timeout, From),
+	do_recv(St, Item);
 handle_call(R, _From, St) ->
   {reply, {error, R}, St}.
 
@@ -80,3 +83,12 @@ terminate(_, _) ->
 
 code_change(_OldVsn, St, _Extra) ->
   {ok, St}.
+
+do_recv(#st{pduq=PduQ, recvq=RecvQ}=St, Item) ->
+	case queue:out(PduQ) of
+		{{value, Data}, PduQ1} ->
+			{reply, {ok, Data}, St#st{pduq=PduQ1}};
+		{empty, PduQ} ->
+			RecvQ1 = dkq:in(Item, RecvQ),
+			{noreply, St#st{recvq=RecvQ1}}
+	end.
