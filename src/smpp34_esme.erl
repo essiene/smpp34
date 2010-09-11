@@ -67,6 +67,14 @@ open({recv, Timeout}, From, St) ->
 open(_Event, _From, St) ->
   {reply, {error, _Event}, open, St}.
 
+
+closed({recv, _}, From, #st{pduq=PduQ}=St) ->
+  case queue:out(PduQ) of
+  	{empty, PduQ} ->
+		closed('$__foo', From, St);
+	{{value, Data}, PduQ1} ->
+		{reply, Data, closed, St#st{pduq=PduQ1}}
+  end;
 closed(_Event, _From, #st{close_reason=undefined}=St) ->
   {reply, {error, closed}, closed, St};
 closed(_Event, _From, #st{close_reason={error, R}}=St) ->
