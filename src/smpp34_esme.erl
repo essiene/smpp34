@@ -20,7 +20,7 @@
 %% ------------------------------------------------------------------
 
 connect(Host, Port) ->
-  gen_fsm:start_link(?MODULE, [Host, Port], []).
+  gen_fsm:start(?MODULE, [Host, Port], []).
 
 close(Pid) ->
 	gen_fsm:sync_send_event(Pid, close).
