@@ -8,7 +8,7 @@
 %% API Function Exports
 %% ------------------------------------------------------------------
 
--export([connect/2, close/1, send/2, send/3]).
+-export([connect/2, close/1, send/2, send/3, recv/1, recv/2]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
@@ -34,10 +34,17 @@ send(Pid, Status, Body) ->
 
 recv(Pid) ->
 	% by default block forever till response comes back
-	gen_server:call(Pid, {recv, infinity}, infinity).
+	recv(Pid, infinity).
 
 recv(Pid, Timeout) ->
-	gen_server:call(Pid, {recv, Timeout}, Timeout).
+	case catch(gen_server:call(Pid, {recv, Timeout}, Timeout)) of
+		{'EXIT', {R, _}} ->
+			{error, R};
+		Other ->
+			Other
+	end.
+		
+
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
