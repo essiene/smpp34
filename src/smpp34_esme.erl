@@ -70,9 +70,8 @@ handle_call(R, _From, St) ->
 handle_cast(_R, St) ->
   {noreply, St}.
 
-handle_info({esme_data, E, Pdu}, #st{esme=E, pduq=Q}=St) ->
-  Q2 = queue:in(Pdu, Q),
-  {noreply, St#st{pduq=Q2}};
+handle_info({esme_data, E, Pdu}, #st{esme=E}=St) ->
+  do_pdu_recv(St, Pdu);
 handle_info(#'DOWN'{ref=MRef, reason=R}, #st{esme_mref=MRef}=St) ->
   {stop, R, St};
 handle_info(_Info, St) ->
@@ -92,3 +91,17 @@ do_recv(#st{pduq=PduQ, recvq=RecvQ}=St, Item) ->
 			RecvQ1 = dkq:in(Item, RecvQ),
 			{noreply, St#st{recvq=RecvQ1}}
 	end.
+
+do_pdu_recv(#st{pduq=PduQ, recvq=RecvQ}=St, Pdu) ->
+	case dkq:out(RecvQ) of
+		{empty, RecvQ} ->
+			PduQ1 = queue:in(Pdu, PduQ),
+			{noreply, St#st{pduq=PduQ1}};
+		{{value, From}, RecvQ1} ->
+			gen_server:reply(From, {ok, Pdu}),
+			{noreply, St#st{recvq=RecvQ1}};
+		{{decayed, _}, RecvQ1} ->
+			St1 = St#st{recvq=RecvQ1},
+			do_pdu_recv(St1, Pdu)
+	end.
+			
