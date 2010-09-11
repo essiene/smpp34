@@ -56,7 +56,7 @@ closed(_Event, St) ->
   {next_state, closed, St}.
 
 open(close, _F, #st{esme=E}=St) ->
-  {reply, smpp34_esme_core:stop(E), closed, St};
+  {reply, smpp34_esme_core:stop(E), closed, St#st{close_reason=closed}};
 open({send, Body}, _F, #st{esme=E}=St) ->
   {reply, smpp34_esme_core:send(E, Body), open, St};
 open({send, Status, Body}, _F, #st{esme=E}=St) ->
@@ -75,10 +75,6 @@ closed({recv, _}, From, #st{pduq=PduQ}=St) ->
 	{{value, Data}, PduQ1} ->
 		{reply, Data, closed, St#st{pduq=PduQ1}}
   end;
-closed(_Event, _From, #st{close_reason=undefined}=St) ->
-  {reply, {error, closed}, closed, St};
-closed(_Event, _From, #st{close_reason={error, R}}=St) ->
-  {reply, {error, R}, closed, St};
 closed(_Event, _From, #st{close_reason=R}=St) ->
   {reply, {error, R}, closed, St}.
 
