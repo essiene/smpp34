@@ -2,7 +2,7 @@
 -behaviour(gen_server).
 -include("util.hrl").
 
--record(st, {esme, esme_mref, pduq}).
+-record(st, {esme, esme_mref, pduq, recvq}).
 
 %% ------------------------------------------------------------------
 %% API Function Exports
@@ -40,8 +40,9 @@ init([Host, Port]) ->
 	case smpp34_esme_core_sup:start_child(Host, Port) of
 		{ok, Esme} ->
 			Mref = erlang:monitor(process, Esme),
-			Q = queue:new(),
-			St = #st{esme=Esme, esme_mref=Mref, pduq=Q},
+			PduQ = queue:new(),
+			RecvQ = dkq:new(),
+			St = #st{esme=Esme, esme_mref=Mref, pduq=PduQ, recvq=RecvQ},
 			{ok, St};
 		{error, Reason} ->
 			{stop, Reason}
