@@ -2,7 +2,7 @@
 -behaviour(gen_server).
 -include("util.hrl").
 
--record(st, {esme, esme_mref, q}).
+-record(st, {esme, esme_mref, pduq}).
 
 %% ------------------------------------------------------------------
 %% API Function Exports
@@ -41,7 +41,7 @@ init([Host, Port]) ->
 		{ok, Esme} ->
 			Mref = erlang:monitor(process, Esme),
 			Q = queue:new(),
-			St = #st{esme=Esme, esme_mref=Mref, q=Q},
+			St = #st{esme=Esme, esme_mref=Mref, pduq=Q},
 			{ok, St};
 		{error, Reason} ->
 			{stop, Reason}
@@ -59,9 +59,9 @@ handle_call(R, _From, St) ->
 handle_cast(_R, St) ->
   {noreply, St}.
 
-handle_info({esme_data, E, Pdu}, #st{esme=E, q=Q}=St) ->
+handle_info({esme_data, E, Pdu}, #st{esme=E, pduq=Q}=St) ->
   Q2 = queue:in(Pdu, Q),
-  {noreply, St#st{q=Q2}};
+  {noreply, St#st{pduq=Q2}};
 handle_info(#'DOWN'{ref=MRef, reason=R}, #st{esme_mref=MRef}=St) ->
   {stop, R, St};
 handle_info(_Info, St) ->
