@@ -101,12 +101,12 @@ handle_sync_event(_Event, _From, StateName, St) ->
 
 
 handle_info({esme_data, E, Pdu}, StateName, #st{esme=E}=St) ->
-  do_pdu_recv(St, StateName, Pdu);
+  do_pdu_recv(St, StateName, {ok, Pdu});
 handle_info(#'DOWN'{ref=MRef, reason=R}, StateName, #st{esme_mref=MRef}=St) ->
   % when esme_core dies, keep a response for any caller that may be 
   % recv'ing, especially important if timeout is infinity. So they don't
   % wait forever. This way, EVERY RECV WILL ALWAYS GET A RESPONSE
-  do_pdu_recv(St, StateName, R),
+  do_pdu_recv(St, StateName, {error, R}),
   {next_state, closed, St#st{close_reason=R}};
 handle_info(_Info, StateName, St) ->
   {next_state, StateName, St}.
@@ -126,22 +126,22 @@ code_change(_OldVsn, StateName, St, _Extra) ->
 do_recv(#st{pduq=PduQ, recvq=RecvQ}=St, StateName, Item) ->
 	case queue:out(PduQ) of
 		{{value, Data}, PduQ1} ->
-			{reply, {ok, Data}, StateName, St#st{pduq=PduQ1}};
+			{reply, Data, StateName, St#st{pduq=PduQ1}};
 		{empty, PduQ} ->
 			RecvQ1 = dkq:in(Item, RecvQ),
 			{next_state, StateName, St#st{recvq=RecvQ1}}
 	end.
 
-do_pdu_recv(#st{pduq=PduQ, recvq=RecvQ}=St, StateName, Pdu) ->
+do_pdu_recv(#st{pduq=PduQ, recvq=RecvQ}=St, StateName, Data) ->
 	case dkq:out(RecvQ) of
 		{empty, RecvQ} ->
-			PduQ1 = queue:in(Pdu, PduQ),
+			PduQ1 = queue:in(Data, PduQ),
 			{next_state, StateName, St#st{pduq=PduQ1}};
 		{{value, From}, RecvQ1} ->
-			gen_fsm:reply(From, {ok, Pdu}),
+			gen_fsm:reply(From, Data),
 			{next_state, StateName, St#st{recvq=RecvQ1}};
 		{{decayed, _}, RecvQ1} ->
 			St1 = St#st{recvq=RecvQ1},
-			do_pdu_recv(St1, StateName, Pdu)
+			do_pdu_recv(St1, StateName, Data)
 	end.
 			
