@@ -59,9 +59,9 @@ handle_call(R, _From, St) ->
 handle_cast(_R, St) ->
   {noreply, St}.
 
-handle_info({esme_data, E, Pdu}, #st{esme=E}=St) ->
-  error_logger:info_msg("PDU ==> ~p~n", [Pdu]),
-  {noreply, St};
+handle_info({esme_data, E, Pdu}, #st{esme=E, q=Q}=St) ->
+  Q2 = queue:in(Pdu, Q),
+  {noreply, St#st{q=Q2}};
 handle_info(#'DOWN'{ref=MRef, reason=R}, #st{esme_mref=MRef}=St) ->
   {stop, R, St};
 handle_info(_Info, St) ->
