@@ -69,7 +69,6 @@ handle_cast({Rx, #pdu{sequence_number=Snum, body=#unbind{}}},
 handle_cast({Rx, #pdu{body=#unbind_resp{}}}, #state{rx=Rx}=St) ->	
 	{stop, unbind_resp, St};
 handle_cast({Rx, #pdu{}=Pdu}, #state{owner=Owner, rx=Rx}=St) ->
-	error_logger:info_msg("Sending pdu to owner(~p): ~p~n", [Owner, Pdu]),
 	owner_send(Owner, Pdu),
 	{noreply, St};
 handle_cast(stop, St) ->
