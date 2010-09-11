@@ -41,14 +41,14 @@ handle_info({tcp, Socket, Data}, #state{socket=Socket, data=Data0, pdusink=PduSi
 	smpp34_rx:deliver(PduSink, PduList), 
 	inet:setopts(Socket, [{active, once}]), 
 	{noreply, St#state{data=Rest}};
-handle_info({tcp_closed, Socket}, #state{socket=Socket, send_unbind=false}=St) ->
-	{stop, tcp_closed, St};
-handle_info({tcp_error, Socket, Reason}, #state{socket=Socket, send_unbind=false}=St) ->
+handle_info({tcp_closed, Socket}, #state{socket=Socket}=St) ->
+	{stop, tcp_closed, St#state{send_unbind=false}};
+handle_info({tcp_error, Socket, Reason}, #state{socket=Socket}=St) ->
 	% Well, I don't think it makes sense to attempt to 
 	% continue when a TCP error occurs. Better bail here, so
 	% the monitoring process will also bail.
 
-	{stop, {tcp_error, Reason}, St};
+	{stop, {tcp_error, Reason}, St#state{send_unbind=false}};
 handle_info(#'DOWN'{ref=Mref, reason=unbind}, #state{mref=Mref, send_unbind=false}=St) ->
 	{stop, normal, St};
 handle_info(#'DOWN'{ref=Mref, reason=unbind_resp}, #state{mref=Mref, send_unbind=false}=St) ->
