@@ -14,7 +14,7 @@ The components are:
 tx -    The PDU transmitter. This is responsible for all OUTBOUND tcp
         communication. It takes in records representing the PDU and then
 		packs them into binary before sending them on their merry way 
-		on the network.
+		on the network. ** Except during shutdown
 
 snum - Generates sequence numbers. It is used by tx to add sequence numbers
        to outgoing PDUs that do not have sequence numbers already.
@@ -22,8 +22,8 @@ snum - Generates sequence numbers. It is used by tx to add sequence numbers
 
 rx -    The PDU aware receiver. This where all incoming PDUs get delivered
         after being unpacked. rx is protocol aware and is responsible for
-		taking some actions on the PDU before delivering them to its owner
-		process. Some of the actions taken on PDUs include:
+		taking some actions on the PDU before delivering them to esme_core.
+		Some of the actions taken on PDUs include:
 
 			#enquire_link{}: rx will construct an enquire_link_resp{} pdu
 		                     and send to tx for delivery
@@ -34,52 +34,63 @@ rx -    The PDU aware receiver. This where all incoming PDUs get delivered
 tcprx - The TCP receiver. This is responsible for all INBOUND tcp 
         communication. It takes in binary PDUs from the network and
 		unpacks them into erlang records representing the PDU. Then
-		delivers them the rx module which owns it.
+		delivers them to the rx module which owns it.
 
-esme - This is the process that actually orchestrates the functioning of
+esme_core - This is the process that orchestrates the functioning of
 	     the other components. More accurately, it starts the creation process
-		 and initiates a normal teardown when the need arises. 
+		 and initiates a normal teardown when the need arises. It is also the
+		 only part that the userspace components interact with.
+
+User Space -  All the components described above build a proper ESME mechanism,
+	     to interact with this mechanism though, one of the user space
+		 components must be employed. Two of them exist:
+		 	1. smpp34_esme: Simple synchronous API. Not suitable for OTP tree
+			2. smpp34_gen_esme: Elaborate Asynchronous API. Designed to sit in
+			   an OTP tree
 
 
 The relationship can be represented like:
 
-+ esme
-    + tx
-	    + snum
-    + rx
-	    + tcprx
++UserSpaceComponents
+	+ esme_core
+		+ tx
+			+ snum
+		+ rx
+			+ tcprx
 
 The table below shows the various processes and the data flows and
 transformations that take place between them
 
-process | input process | input datatype | output process | output datatype
-===========================================================================
-esme    | rx            | #pdu{}         | USERSPACE      | #pdu{}
-esme    | USERSPACE     | #pdu{}         | tx             | #pdu{}
-tx      | snum          | sequence_nums  |                |
-tx      | esme          | #pdu{}         | NETWORK        | <<pdu>>
-tx      | rx            | #pdu{}         | NETWORK        | <<pdu>>
-rx      | tcprx         | #pdu{}         | esme           | #pdu{}
-rx      | tcprx         | #pdu{}         | tx             | #pdu{}
-tcprx   | NETWORK       | <<pdu>>        | rx             | #pdu{}
-snum    |               |                | tx             | sequence_nums
+process      | input process | input datatype | output process | output datatype
+================================================================================
+esme_core    | rx            | #pdu{}         | USERSPACE      | #pdu{}
+esme_core    | USERSPACE     | #pdu{}         | tx             | #pdu{}
+tx           | snum          | sequence_nums  |                |
+tx           | esme_core     | #pdu{}         | NETWORK        | <<pdu>>
+tx           | rx            | #pdu{}         | NETWORK        | <<pdu>>
+rx           | tcprx         | #pdu{}         | esme_core      | #pdu{}
+rx           | tcprx         | #pdu{}         | tx             | #pdu{}
+tcprx        | NETWORK       | <<pdu>>        | rx             | #pdu{}
+snum         |               |                | tx             | sequence_nums
 
 
 Supervision Tree
 ================
 
 Because smpp34 wants to be a properly behaved OTP citizen, it has a well defined
-supervision tree. Every component described above, apart from the smpp34
-gen_server is part of that supervision tree. The reason why the smpp34
-gen_server is not part of that tree is because it is mean to be used
-interactively, so supervising it does not make sense.
+supervision tree. Every component described above, apart from the smpp34_esme
+module is part of that supervision tree. The reason why the smpp34_esme
+module is not part of that tree is because it is mean to be used
+in a request response fashion, so supervising it does not make sense.
 
-The tree is described next.
+It can be done, but smpp34_gen_esme is designed specifically for that purpose.
+
+The supervision tree is described next.
 
 + smpp34_app
     + smpp34_sup [one_for_one]
-		+ smpp34_esme_sup [simple_one_for_one]
-		    + smpp34_esme [temporary]
+		+ smpp34_esme_core_sup [simple_one_for_one]
+		    + smpp34_esme_core [temporary]
 		+ smpp34_tx_sup [simple_one_for_one]
 			+ smpp34_tx [temporary]
 		+ smpp34_rx_sup [simple_one_for_one]
@@ -94,7 +105,7 @@ In the illustration shown, the smpp34_app is the application callback which
 starts the smpp34_sup the top-level supervisor (a one_for_one supervisor).
 
 smpp34_sup starts all the other supervisors:
-	smpp34_esme_sup
+	smpp34_esme_core_sup
 	smpp34_tx_sup
 	smpp34_rx_sup
 	smpp34_tcprx_sup
@@ -104,8 +115,14 @@ These next level of supervisors are all simple_one_for_one supervisors.
 
 Once all these are started, the smpp34 library is ready to be used. Using
 the library then just involves asking the second level supervisors to 
-start an instance of their child_spec. This is exactly what the esme
+start an instance of their child_spec. This is exactly what the esme_core
 process does (when it is started by its own supervisor).
+
+NOTE: There is no supervisor for smpp34_gen_esme. This is because it is a
+userspace component and though it is designed to fit into the supervision tree,
+that decision and how exactly it fits in, depends on the user application. The
+user application will have to create the supervisor for the gen_esme module
+depending on the application semantics.
 
 
 Startup Sequence
@@ -113,17 +130,17 @@ Startup Sequence
 
 The startup sequence respects the process relationship previously shown 
 
-+ esme
++ esme_core
     + tx
 	    + snum
     + rx
 	    + tcprx
 
-The esme will start the tx, which in turn starts it's private snum.
-Then the esme will start the rx, which in turn starts it's private tcprx.
+The esme_core will start the tx, which in turn starts it's private snum.
+Then the esme_core will start the rx, which in turn starts it's private tcprx.
 
 During startup, any errors encountered, will be reported all the way back to the
-esme.
+esme_core and back to the Userspace component.
 
 
 Monitoring Relationship
@@ -137,11 +154,12 @@ The result of this is the following monitoring relationship. The arrow direction
 shows points to what is being monitored from the "what" that is doing the
 monitoring.
 
-esme -> USER, tx, rx
-     tx -> esme, snum
-	    snum -> tx
-	 rx -> esme, tx, tcprx
-	    tcprx -> rx
+USERSPACE -> esme_core
+	esme_core -> USERSPACE, tx, rx
+		 tx -> esme_core, snum
+			snum -> tx
+		 rx -> esme_core, tx, tcprx
+			tcprx -> rx
 
 
 The Kiss Of Death
@@ -152,12 +170,18 @@ precise and intricate relationship between the various modules and their
 supervisors.
 
 These relationships actually translate into a few definite ways in which death
-can occur. smpp34 teardown is designed around these explicity and specific
+can occur. smpp34 teardown is designed around these explicit and specific
 instances.
 
 In addition to this, each module is primarily responsible for specific cleanup
 actions and the particular cleanup action depends on what is triggering that
 particular death.
+
+There are a few rules.
+
+	* The death of a Parent process is not an error for the Child process
+	* The Reason for death of a Child process is always bubbled upwards
+	* Parents do not care about their children when they're dieing
 
 The details are as follows:
 
@@ -209,13 +233,13 @@ The details are as follows:
 		- nothing extra, just die
 	b. rx:stop is called
 		- stop with reason normal
-	c. esme dies
+	c. esme_core dies
 	    - stop with reason normal
 	c. tx dies
 		- stop with reason normal
 	d. tcprx dies
 		- stop with reason {tcprx, Reason}
-		- this will bubble up to esme for possible informing of userspace
+		- this will bubble up to esme_core and then to userspace
 	e. SMSC sends #unbind{}
 		- we're being asked to unbind
 		- Send #unbind_resp{} back to SMSC
@@ -232,30 +256,72 @@ The details are as follows:
 		- terminate will be called with reason 'shutdown'
 	b. tx:stop is called
 		- stop with reason normal
-	c. esme dies
+	c. esme_core dies
 	    - stop with reason normal
 	d. snum dies
 		- stop with reason {snum, Reason}
-		- this will bubble up to esme for possible informing of userspace
+		- this will bubble up to esme_core and then to userspace
 	e. internal exception
 	  	- allow reason to bubble and be logged 
 
-5. esme
-=======
+5. esme_core
+============
 	a. supervisor shutdown
 		- terminate will be called with reason 'shutdown'
 		- nothing extra, just die
-	b. esme:close is called
-		- close tx
-		- close rx
-		- change state to closed
+	b. esme_core:close is called
+		- stop with reason normal
 	c. rx dies
-		- close tx
-		- change state to closed
+		- stop with reason {rx, Reason}
+		- this will bubble up to userspace
 	d. tx dies
-		- close rx 
+		- stop with reason {tx, Reason}
+		- this will bubble up to userspace
+	d. internal exception
+		- allow reason to bubble to userspace
+	e. Userspace dies
+		- stop with reason normal
+
+6. smpp34_esme
+==============
+	a. Supervisor shutdown
+		- nothing extra. Just die
+	b. esme_core dies
+		- change state to closed
+	c. close called
+		- stop esme_core
 		- change state to closed
 	d. internal exception
-		- allow reason to bubble and be logged
-	e. Calling process dies
-		- stop with calling process reason
+		- just die
+
+7. smpp34_gen_esme
+==================
+	a. Supervisor shutdown
+		- nothing extra. Just die
+	b. esme_core dies
+		- die with reason {esme_core, Reason}
+	c. close called
+		- stop with reason normal
+	d. internal exception
+		- just die
+
+
+Sending
+========
+
+Sending a PDU works by pumping the PDU body (a record defined in smpp34pdu) into
+the esme_core. The esme_core forwards this to its tx, where a new serial number is tacked
+on to the pdu and it is packed and sent along its merry way.
+
+USERSPACE -> pdubody -> ESME_CORE -> pdubody -> TX -> #pdu{} -> <<pdu>> -> NETWORK
+
+
+Receving
+========
+
+When a PDU is received on the network, a couple of scenarios can arise.
+
+	1. The PDU is an SMSC originating PDU meant for userspace (e.g. deliver_sm)
+	2. The PDU is an SMSC originating PDU not meant for userspace (enquire_link)
+	3. The PDU is a response PDU meant for userspace (e.g. submit_sm_resp)
+	4. The PDU is a response PDU but IS NOT meant for userspace (e.g.  enquire_link_resp)
