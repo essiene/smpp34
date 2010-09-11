@@ -2,9 +2,7 @@
 -behaviour(gen_server).
 -include("util.hrl").
 
--define(ETS_OPTS, [ordered_set, private, {keypos, 2}]).
-
--record(st, {esme, esme_mref, ets}).
+-record(st, {esme, esme_mref, q}).
 
 %% ------------------------------------------------------------------
 %% API Function Exports
@@ -42,9 +40,8 @@ init([Host, Port]) ->
 	case smpp34_esme_core_sup:start_child(Host, Port) of
 		{ok, Esme} ->
 			Mref = erlang:monitor(process, Esme),
-			% Possible optimization: use same ETS among all instances
-			Ets = ets:new(esme_ets, ?ETS_OPTS),
-			St = #st{esme=Esme, esme_mref=Mref, ets=Ets},
+			Q = queue:new(),
+			St = #st{esme=Esme, esme_mref=Mref, q=Q},
 			{ok, St};
 		{error, Reason} ->
 			{stop, Reason}
@@ -70,8 +67,7 @@ handle_info(#'DOWN'{ref=MRef, reason=R}, #st{esme_mref=MRef}=St) ->
 handle_info(_Info, St) ->
   {noreply, St}.
 
-terminate(_, #st{ets=Ets}) ->
- ets:delete(Ets),
+terminate(_, _) ->
  ok.
 
 code_change(_OldVsn, St, _Extra) ->
