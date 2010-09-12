@@ -45,7 +45,7 @@ User Space -  All the components described above build a proper ESME mechanism,
 	     to interact with this mechanism though, one of the user space
 		 components must be employed. Two of them exist:
 		 	1. smpp34_esme: Simple synchronous API. Not suitable for OTP tree
-			2. smpp34_gen_esme: Elaborate Asynchronous API. Designed to sit in
+			2. gen_esme34: Elaborate Asynchronous API. Designed to sit in
 			   an OTP tree
 
 
@@ -83,7 +83,7 @@ module is part of that supervision tree. The reason why the smpp34_esme
 module is not part of that tree is because it is mean to be used
 in a request response fashion, so supervising it does not make sense.
 
-It can be done, but smpp34_gen_esme is designed specifically for that purpose.
+It can be done, but gen_esme34 is designed specifically for that purpose.
 
 The supervision tree is described next.
 
@@ -118,10 +118,10 @@ the library then just involves asking the second level supervisors to
 start an instance of their child_spec. This is exactly what the esme_core
 process does (when it is started by its own supervisor).
 
-NOTE: There is no supervisor for smpp34_gen_esme. This is because it is a
+NOTE: There is no supervisor for gen_esme34. This is because it is a
 userspace component and though it is designed to fit into the supervision tree,
 that decision and how exactly it fits in, depends on the user application. The
-user application will have to create the supervisor for the gen_esme module
+user application will have to create the supervisor for the gen_esme34 module
 depending on the application semantics.
 
 
@@ -294,8 +294,8 @@ The details are as follows:
 	d. internal exception
 		- just die
 
-7. smpp34_gen_esme
-==================
+7. gen_esme34
+=============
 	a. Supervisor shutdown
 		- nothing extra. Just die
 	b. esme_core dies
