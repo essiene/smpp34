@@ -11,3 +11,13 @@ detail. I've noticed that if I use a the same name for all the states, then the
 logs are harder to decipher, as its confusing knowing which module produced the
 error. I'll need to rename the state records to reflect which the module
 properly so the errors are easier to decipher
+
+
+Track some statistics:
+	- Uptime: Tracked by esme_core
+	- txcounter: smpp34_tx
+	- rxcounter: smpp34_tcprx
+	- ttx: timestamp when pdu is sent off by tx
+	- trx1: timestamp when pdu is received by tcprx
+	- trx2: timestamp when pdu is received by rx
+	- trx3: timestamp when pdu is received by esme_core
