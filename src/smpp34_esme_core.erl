@@ -15,7 +15,7 @@
 %% API Function Exports
 %% ------------------------------------------------------------------
 
--export([start_link/3, stop/1, send/2, send/3]).
+-export([start_link/3, stop/1, send/2, send/3, send/4]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
@@ -38,6 +38,9 @@ send(Pid, Body) ->
 
 send(Pid, Status, Body) ->
 	gen_server:call(Pid, {tx, Status, Body}).
+
+send(Pid, Status, Snum, Body) ->
+	gen_server:call(Pid, {tx, Status, Snum, Body}).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
@@ -84,6 +87,8 @@ init([Owner, Host, Port]) ->
 
 handle_call({tx, Status, Body}, _From, #st{tx=Tx}=St) ->
   {reply, catch(smpp34_tx:send(Tx, Status, Body)), St};
+handle_call({tx, Status, Snum, Body}, _From, #st{tx=Tx}=St) ->
+  {reply, catch(smpp34_tx:send(Tx, Status, Snum, Body)), St};
 handle_call(stop, _From, St) ->
   {stop, normal, ok, St};
 handle_call(R, _From, St) ->
