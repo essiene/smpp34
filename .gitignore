@@ -11,3 +11,5 @@ ebin
 *.rpm
 *.patch
 .eunit
+.*.un~
+.*.swp
