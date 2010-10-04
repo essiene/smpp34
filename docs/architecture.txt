@@ -80,7 +80,7 @@ Supervision Tree
 Because smpp34 wants to be a properly behaved OTP citizen, it has a well defined
 supervision tree. Every component described above, apart from the smpp34_esme
 module is part of that supervision tree. The reason why the smpp34_esme
-module is not part of that tree is because it is mean to be used
+module is not part of that tree is because it is meant to be used
 in a request response fashion, so supervising it does not make sense.
 
 It can be done, but gen_esme34 is designed specifically for that purpose.
@@ -310,8 +310,8 @@ Sending
 ========
 
 Sending a PDU works by pumping the PDU body (a record defined in smpp34pdu) into
-the esme_core. The esme_core forwards this to its tx, where a new serial number is tacked
-on to the pdu and it is packed and sent along its merry way.
+the esme_core. The esme_core forwards this to its tx, where a SMPP new sequence 
+number is tacked on to the pdu and it is packed and sent along its merry way.
 
 USERSPACE -> pdubody -> ESME_CORE -> pdubody -> TX -> #pdu{} -> <<pdu>> -> NETWORK
 
