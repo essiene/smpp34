@@ -15,6 +15,36 @@ mandatory maturing out in the wild, as it is being used to
 develop a real application with hundreds of thousands of 
 transactions a day.
 
+Building
+--------
+smpp34 is built with rebar, the awesome erlang build tool.
+
+There is a Makefile wrapping up its use, so it plays nice with other
+build environments.
+
+First clone the sources from git hub:
+
+   $ git clone git://github.com/essiene/smpp34.git
+
+Then build:
+   $ cd smpp34
+   $ make
+
+Installation
+------------
+Deploy like any other erlang library
+
+
+Usage/Examples
+==============
+
+This library exposes two API sets.
+
+    - smpp34_esme - A synchronous client API
+    - gen_esme34 - An asynchronous client API/behaviour that fits into
+                   the Erlang/OTP supervision tree.
+
+
 smpp34_esme
 ===========
 
@@ -51,8 +81,8 @@ start() ->
 gen_esme34
 ==========
 
-smpp34_esme is a synchronous client API and it does not fit very
-well when building an ESME server akin to Kannel. It also does not fit
+smpp34_esme as a synchronous client API, does not fit very well 
+when building an ESME server akin to Kannel. It also does not fit
 into the Erlang/OTP supervision tree.
 
 gen_esme34 is designed to fill these gaps. It works asynchronously, fits
