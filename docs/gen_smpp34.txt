@@ -1,0 +1,191 @@
+gen_esme34 is an asynchronous interface that is designed to be used when 
+there is a need to fit into an OTP supervision tree.
+
+gen_esme34 takes esme_core and builds infrastructure around it, exposing a 
+gen_server type framework and behaviour that makes building ESMEs a well 
+defined task.
+
+This document assumes a basic understanding of the SMPP procotocol, the Erlang
+programming language and the OTP framework.
+
+Integration with gen_server
+----------------------------
+
+The terrible ASCII art below shows the core interaction:
+
+      -----params---->      --request message->     ---params-->
+
+GEN_ESME34_FUNC - GEN_SERVER_FUNC - GEN_SERVER_CALLBACK - GEN_ESME34_CALLBACK
+
+      <----response---      <-response message-     <--response--               
+
+
+The description of the diagramatic interaction follows.
+
+When a caller calls one of the gen_esme34 api functions for instance 
+gen_esme34:call/2 with a set of parameters, gen_esme34:call/2 is implemented
+to directly call gen_server:cast/2 with the very same parameters that it was
+called with. The gen_server infrastructure will generate a message and send
+to the gen_server process referenced by the ServerRef parameter in the call.
+
+That message will be recieved by the gen_server in its handle_call/3 callback.
+
+At this point, the gen_server just wraps the received parameters and calls
+gen_esme34:handle_call/3 as a function passing it the parameters it has just
+received.
+
+Any responses are sent back along this path.
+
+
+gen_esme34 api summary
+-----------------------
+Since gen_esme34 is designed to be used in any place a gen_server would make
+logical sense, it implements _all_ the functions and callbacks that a normal
+gen_server implements (with a few differences) and then adds a few functions
+and callbacks that are specific to gen_esme34.
+
+The table below gives a summary:
+
+Function                Callback
+________________________________
+
+start                   init[1]
+start_link              init[1]
+call                    handle_call
+multicall               handle_call
+cast                    handle_cast
+abcast                  handle_cast
+reply
+ping[2]
+transmit_pdu[2]         handle_tx[3]
+                        handle_info
+                        handle_rx[3]
+
+
+[1] - Callback is also present in gen_server but the usage is changed
+      in gen_esme34
+[2] - Function call is unique to gen_esme34
+[3] - Callback is unique to gen_esme34
+
+
+The rest of this document throws more light on the gen_esme34 specific side
+of things.
+
+Binding to an SMSC
+------------------
+
+The first step in building an ESME is normally to bind to the SMSC. 
+
+When gen_esme34:start or gen_esme34:start_link is called, gen_esme34 will
+attempt to establish a connection to the SMSC and send a bind pdu to the SMSC
+for you. The host address, port and the bind pdu have to be specified in the
+return tuple of the init/1 callback. A proper return value from init/1 will
+look like:
+
+    {ok, {SmscAddr, SmscPort, BindPdu}, State}.
+
+The BindPdu is a pdu body from the smpp34pdu library, while the State is the
+internal gen_esme34 state (same as a gen_server state).
+
+gen_esme34 takes this tuple and makes the connection to the SMSC returning
+the Pid of the gen_esme34 if successfull or an error and reason if it fails.
+
+Once successfull, the gen_esme34 is considered up and running.
+
+
+Receiving Pdus
+--------------
+
+When ever the SMSC sends us a pdu that needs to be delivered to userspace,
+gen_esme34 calls the handle_rx/2 callback. 
+
+The handle_rx callback accepts the Pdu as the first parameter and the module
+state as the second parameter. The Pdu can be then accessed for what ever work
+is required and the callback reply returned.
+
+handle_rx/2 can respond with replies valid for gen_server:info/2 callback, but
+in addition to those replies, it can also reply with the 'tx' tuple:
+
+    {tx, PduSpec, State}
+
+This reply tuple triggers gen_esme34 to transmit the PduSpec to the SMSC.
+
+The PduSpec can be:
+
+    - {SmppStatus, PduBody, Extra}
+    - {SmppStatus, SmppSequenceNumber, PduBody, Extra}
+    - [PduSpec]
+    - []
+
+SmppStatus parameter is packed into the command_status field of the PDU
+header.
+
+SmppSequenceNumber is also packed into the sequence_number field of the PDU 
+header.
+
+PduBody is one of the pdu body types in smpp34pdu library.
+
+The parameter 'Extra' is passed to handle_tx in the 'Extra' parameter. See
+further below for more information.
+
+
+
+Transmitted Pdus
+----------------
+
+When a PDU is sent to the SMSC either successfully or the sending failed, this
+reply is contained in a tuple and can be any of the following:
+
+    - {ok, SmppSequenceNumber} 
+    - {error, Reason}
+
+This status reason is delivered to handle_tx/3, along with the 'Extra' 
+parameter and the gen_esme34 state.
+
+The Extra parameter is typically used to identify the PDU at the time of 
+sending (either when the {tx,_,_} tuple is returned from handle_rx/2 or
+as we shall soon see, when calling transmit_pdu. This should be carry at
+least a transaction id uniquely associated with the PDU.
+
+
+Transmission From Userspace
+---------------------------
+
+Apart from returning the {tx,_,_} tuple from handle_rx/2, it is possible to 
+initiate a transmit from userspace. This is done by calling any of the 
+transmit_pdu functions:
+
+   - transmit_pdu(ServerRef, Body)
+   - transmit_pdu(ServerRef, Body, Extra)
+   - transmit_pdu(ServerRef, Status, Body, Extra)
+
+ServerRef is the gen_esme34 server reference returned from start or start_link.
+Status is an SmppStatus e.g. ?ESME_ROK, etc
+PduBody is a PDU record as provided by smpp34pdu library
+Extra is the extra parameter passed to handle_tx. Note that in transmit_pdu/2
+      where the extra parameter is not supplied, the atom undefined, is sent
+      to handle_tx.
+
+Instrospection: Ping/1
+----------------------
+
+One interesting function provided by gen_esme34 is the ping/1 function.
+
+This just provides a way to query the gen_esme34 and see what's going on
+inside it. It returns a proplist that gives top secret insider info on
+what's happening inside the gen_esme34.
+
+Enquire_Link[_Resp]
+-------------------
+
+Enquire_Link and Enquire_Link_Resp pdus are handled by esme_core and never 
+leak across the abstraction boundary. There is no need to worry about it as
+esme_core will automagically respond with the proper response.
+
+Unbind[_Resp]
+-------------
+When the SMSC sends an Unbind pdu, esme_core will honor this by sending the
+unbind response and disconnecting. The gen_esme34 will die with the proper
+reason. If an unbind response is recieved due to an unbind we sent earlier,
+the same thing happens.
+
