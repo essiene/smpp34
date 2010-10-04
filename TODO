@@ -43,3 +43,7 @@ Other ideas worth looking into usability-wise:
 	- Have smpp34_esme as a simple client, exposing {active, true|false} 
       options,while then gen_esme34 as an ESME framework
 
+Ensure that the proper bind_resp PDU is sent back for each PDU bind type.
+We can do this by first packing the PDU to send, then getting its command_id
+then changing the uppermost bit to 1 to get the response pdu command_id then
+using that to match the receive clause
