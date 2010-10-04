@@ -9,7 +9,7 @@
 -export([start/3, start/4, start_link/3, start_link/4,
         call/2, call/3, multicall/2, multicall/3,
         multicall/4, cast/2, cast/3, abcast/2, abcast/3,
-        reply/2, ping/1, send/2, send/3]).
+        reply/2, ping/1, transmit_pdu/2, transmit_pdu/3, transmit_pdu/4]).
 
 
 -export([init/1, handle_call/3, handle_cast/2,
@@ -24,7 +24,8 @@ behaviour_info(callbacks) ->
         {handle_call, 3},
         {handle_cast, 2},
         {handle_info, 2},
-        {handle_pdu, 2},
+        {handle_rx, 2},
+        {handle_tx, 3},
         {terminate, 2},
         {code_change, 3}
     ];
