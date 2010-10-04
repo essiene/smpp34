@@ -102,7 +102,10 @@ init([{'__gen_esme34_mod', Mod} | InitArgs]) ->
     process_flag(trap_exit, true),
 	% how do we monitor owner?
 
-    case Mod:init(InitArgs) of
+    {GenEsme34Opts, InitArgs1} = gen_esme34_options(InitArgs),
+    BindRespTimeout = proplists:get_value(bind_resp_timeout, GenEsme34Opts, 10000),
+
+    case Mod:init(InitArgs1) of
         ignore ->
             ignore;
         {stop, Reason} ->
@@ -153,8 +156,7 @@ init([{'__gen_esme34_mod', Mod} | InitArgs]) ->
 								{esme_data, Esme, 
 									#pdu{command_status=Status}} ->
 										{stop, ?SMPP_STATUS(Status)}
-						% This timeout should be configurable
-							after 10000 ->
+							after BindRespTimeout ->
 								{stop, timeout}
 							end
 
