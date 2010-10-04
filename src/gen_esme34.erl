@@ -78,11 +78,14 @@ reply(Client, Reply) ->
 ping(ServerRef) ->
     gen_server:call(ServerRef, ping).
 
-send(ServerRef, Body) ->
-	send(ServerRef, ?ESME_ROK, Body).
+transmit_pdu(ServerRef, Body) ->
+    transmit_pdu(ServerRef, Body, undefined).
 
-send(ServerRef, Status, Body) ->
-	gen_server:call(ServerRef, {send, Status, Body}).
+transmit_pdu(ServerRef, Body, Extra) ->
+	transmit_pdu(ServerRef, ?ESME_ROK, Body, Extra).
+
+transmit_pdu(ServerRef, Status, Body, Extra) ->
+	ServerRef ! {'$transmit_pdu', Status, Body, Extra}.
 
 % gen_server callbacks
 
