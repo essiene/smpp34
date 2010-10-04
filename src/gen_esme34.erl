@@ -94,7 +94,8 @@ transmit_pdu(ServerRef, Body, Extra) ->
 	transmit_pdu(ServerRef, ?ESME_ROK, Body, Extra).
 
 transmit_pdu(ServerRef, Status, Body, Extra) ->
-	ServerRef ! {'$transmit_pdu', Status, Body, Extra}.
+	ServerRef ! {'$transmit_pdu', Status, Body, Extra},
+    ok.
 
 % gen_server callbacks
 
