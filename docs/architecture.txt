@@ -179,7 +179,9 @@ particular death.
 
 There are a few rules.
 
-	* The death of a Parent process is not an error for the Child process
+	* The death of a Parent process is not an error for the Child process.
+      It is just a message that will be responded to. Part of the response
+      may ofcourse be tha the child will exit normally.
 	* The Reason for death of a Child process is always bubbled upwards
 	* Parents do not care about their children when they're dieing
 
