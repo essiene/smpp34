@@ -2,22 +2,11 @@
  [
   {description, ""},
   {vsn, "0.1"},
-  {modules, [smpp34_app,
-	  		 smpp34_sup,
-			 smpp34_snum_sup,
-			 smpp34_snum,
-			 smpp34_tcprx_sup,
-			 smpp34_tcprx,
-			 smpp34_tcptx_sup,
-			 smpp34_tcptx,
-			 smpp34_pdurx_sup,
-			 smpp34_pdurx
-	  		]},
-  {registered, [smpp34_sup, 
-	  			smpp34_snum_sup, 
-				smpp34_tcprx_sup, 
-				smpp34_tcptx_sup,
-				smpp34_pdurx_sup
+  {modules, []},
+  {registered, [smpp34_esme_core_sup, 
+             	smpp34_rx_sup, smpp34_snum_sup,  
+                smpp34_sup, smpp34_tcprx_sup,
+                smpp34_tx_sup
 				]},
   {applications, [
                   kernel,
