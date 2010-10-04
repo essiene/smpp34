@@ -11,7 +11,7 @@
 
 start() ->
 	smpp34:start(),
-    gen_esme34:start({local, ?MODULE}, ?MODULE, ["localhost", 10000, "mmayen", "mmayen"], []).
+    gen_esme34:start({local, ?MODULE}, ?MODULE, ["localhost", 10000, "mmayen", "mmayen"], [{ignore_version, true}]).
 
 stop() ->
     gen_esme34:cast(?MODULE, stop).
@@ -64,4 +64,4 @@ code_change(_OldVsn, St, _Extra) ->
 
 id() ->
     {A, B, C} = now(),
-    io:format("~p~p~p", [A, B, C]).
+    lists:flatten(io_lib:format("~p~p~p", [A, B, C])).
