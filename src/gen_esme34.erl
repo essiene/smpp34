@@ -173,10 +173,10 @@ handle_cast(Request, #st_gensmpp34{mod=Mod, mod_st=ModSt}=St) ->
 handle_info({esme_data, Esme, Pdu}, #st_gensmpp34{mod=Mod, mod_st=ModSt, esme=Esme, pdurx=Rx}=St0) ->
     St = St0#st_gensmpp34{pdurx=Rx+1},
 
-    case Mod:handle_pdu(Pdu, ModSt) of
-		{pdu, PduSpec, ModSt1} ->
+    case Mod:handle_rx(Pdu, ModSt) of
+		{tx, PduSpec, ModSt1} ->
 			do_pduspec(St#st_gensmpp34{mod_st=ModSt1}, PduSpec);
-       {noreply, ModSt1} ->
+        {noreply, ModSt1} ->
             {noreply, St#st_gensmpp34{mod_st=ModSt1}};
         {noreply, ModSt1, hibernate} ->
             {noreply, St#st_gensmpp34{mod_st=ModSt1}, hibernate};
