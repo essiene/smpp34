@@ -3,7 +3,7 @@
 -behaviour(gen_esme34).
 
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-        handle_pdu/2, terminate/2, code_change/3]).
+        handle_rx/2, handle_tx/3, terminate/2, code_change/3]).
 
 -export([start/0, start/2, stop/0, sendsms/3, ping/0]).
 
@@ -22,7 +22,7 @@ stop() ->
 
 sendsms(Source, Dest, Msg) ->
     S = #submit_sm{source_addr=Source, destination_addr=Dest, short_message=Msg},
-    gen_esme34:send(?MODULE, S).
+    gen_esme34:transmit_pdu(?MODULE, S, id()).
 
 ping() ->
     gen_esme34:ping(?MODULE).
@@ -34,14 +34,23 @@ init([Owner, Host, Port, SystemId, Password]) ->
             #state{host=Host, port=Port, system_id=SystemId, password=Password,
 			owner=Owner, mref=Mref}}.
 
-handle_pdu(#pdu{sequence_number=Snum, body=#deliver_sm{source_addr=Src, destination_addr=Dst, short_message=_Msg}}=Pdu, St) ->
-    error_logger:info_msg("hello_esme ==> ~p", [Pdu]),
-	DeliverSmResp = #deliver_sm_resp{message_id="foo"},
-    SubmitSm = #submit_sm{source_addr=Dst, destination_addr=Src, short_message="Hello SMPP World"},
-    {pdu, [{?ESME_ROK, Snum, DeliverSmResp}, {?ESME_ROK, SubmitSm}], St};
+handle_tx({ok, Sn}, Extra, St) ->
+	error_logger:info_msg("helo|tx|~p|ok|~p~n", [Extra, Sn]),
+	{noreply, St};
+handle_tx({error, Reason}, Extra, St) ->
+	error_logger:info_msg("helo|tx|~p|err|~p~n", [Extra, Reason]),
+	{noreply, St}.
 
-handle_pdu(Pdu, St) ->
-    error_logger:info_msg("hello_esme ==> ~p", [Pdu]),
+handle_rx(#pdu{sequence_number=Snum, body=#deliver_sm{source_addr=Src, destination_addr=Dst, short_message=_Msg}}=Pdu, St) ->
+    error_logger:info_msg("helo|rx|~p~n", [Pdu]),
+    Did = id(),
+    DeliverSmResp = #deliver_sm_resp{message_id=Did},
+    SubmitSm = #submit_sm{source_addr=Dst, destination_addr=Src, short_message="Hello SMPP World"},
+    gen_esme34:transmit_pdu(self(), SubmitSm, id()),
+    {tx, {?ESME_ROK, Snum, DeliverSmResp, Did}, St};
+
+handle_rx(Pdu, St) ->
+    error_logger:info_msg("helo|rx|~p~n", [Pdu]),
     {noreply, St}.
     
 handle_call(Req, _From, St) ->
@@ -62,3 +71,7 @@ terminate(_Reason, _St) ->
 
 code_change(_OldVsn, St, _Extra) ->
     {noreply, St}.
+
+id() ->
+    {A, B, C} = now(),
+    io:format("~p~p~p", [A, B, C]).
