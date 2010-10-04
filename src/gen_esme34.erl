@@ -214,10 +214,23 @@ do_pduspec(St, []) ->
 do_pduspec(St, [H|T]) ->
 	{noreply, St1} = do_pduspec(St, H),
 	do_pduspec(St1, T);
-do_pduspec(#st_gensmpp34{esme=E, pdutx=Tx}=St, {Status, Snum, PduBody}) ->
-	{ok, _} = smpp34_esme_core:send(E, Status, Snum, PduBody),
-	{noreply, St#st_gensmpp34{pdutx=Tx+1}};
-do_pduspec(#st_gensmpp34{esme=E, pdutx=Tx}=St, {Status, PduBody}) ->
-	{ok, _} = smpp34_esme_core:send(E, Status, PduBody),
-	{noreply, St#st_gensmpp34{pdutx=Tx+1}}.
+do_pduspec(#st_gensmpp34{esme=E}=St, {Status, Snum, PduBody, Extra}) ->
+	Reply = smpp34_esme_core:send(E, Status, Snum, PduBody),
+    handle_tx(Reply, Extra, St);
+do_pduspec(#st_gensmpp34{esme=E}=St, {Status, PduBody, Extra}) ->
+	Reply = smpp34_esme_core:send(E, Status, PduBody),
+    handle_tx(Reply, Extra, St).
 
+handle_tx(Reply, Extra, #st_gensmpp34{mod=Mod, pdutx=Tx, mod_st=ModSt}=St0) ->
+	St = St0#st_gensmpp34{pdutx=Tx+1},
+
+    case Mod:handle_tx(Reply, Extra, ModSt) of 
+        {noreply, ModSt1} ->
+            {noreply, St#st_gensmpp34{mod_st=ModSt1}};
+        {noreply, ModSt1, hibernate} ->
+            {noreply, St#st_gensmpp34{mod_st=ModSt1}, hibernate};
+        {noreply, ModSt1, Timeout} ->
+            {noreply, St#st_gensmpp34{mod_st=ModSt1}, Timeout};
+        {stop, Reason, ModSt1} ->
+            {stop, Reason, St#st_gensmpp34{mod_st=ModSt1}}
+    end.
