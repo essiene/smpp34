@@ -23,13 +23,23 @@ Track some statistics:
 	- trx3: timestamp when pdu is received by esme_core
 
 
-A proper design is needed to consider the way the SMPP client will be used in
-both synchronous and asynchronous modes. Options are:
-	- Behave like gen_tcp and use an {active, true|false} operational mechanism
-	- Have seperate synchronous and asynchronous clients. (smpp34_esme for sync and
-	  gen_esme34 for async)
-	- Have smpp34_esme as a simple client, then gen_esme34 as an ESME framework
-
 Build a disconnected socket interface for handling closing and opening of
 sockets at the lower level? Or handle disconnections _in_ the smpp34_esme core
 itself? Consider patching gen_tcp too
+
+Apparently, overuse of asynchronous messaging withing the esme_core framework
+can cause mailboxes to fill too fast and affect performance. It would seem that
+the best thing to do, is to actually use synchronous calls to pass PDUs
+among the different esme_core layers, so that the entire stack is never over
+loaded with messages. At smpp34_esme there is a queue for storing messages and
+in gen_esme34 the user will be expected to implement queing.
+
+
+We need {ignore_version, boolean()} and {bind_resp_timeout, N} options in
+gen_esme34
+
+Other ideas worth looking into usability-wise:
+	- Behave like gen_tcp and use an {active, true|false} operational mechanism
+	- Have smpp34_esme as a simple client, exposing {active, true|false} 
+      options,while then gen_esme34 as an ESME framework
+
