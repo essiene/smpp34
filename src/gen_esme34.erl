@@ -259,3 +259,19 @@ handle_tx(Reply, Extra, #st_gensmpp34{mod=Mod, pdutx=Tx, mod_st=ModSt}=St0) ->
         {stop, Reason, ModSt1} ->
             {stop, Reason, St#st_gensmpp34{mod_st=ModSt1}}
     end.
+
+
+gen_esme34_options(Options) ->
+    gen_esme34_options(Options, [], []).
+
+
+gen_esme34_options([], Accm, Others) ->
+    {lists:reverse(Accm), lists:reverse(Others)};
+gen_esme34_options([{ignore_version, _}=H|T], Accm, Others) ->
+    gen_esme34_options(T, [H|Accm], Others);
+gen_esme34_options([ignore_version=H|T], Accm, Others) ->
+    gen_esme34_options(T, [H|Accm], Others);
+gen_esme34_options([{bind_resp_timeout, _}=H|T], Accm, Others) ->
+    gen_esme34_options(T, [H|Accm], Others);
+gen_esme34_options([H|T], Accm, Others) ->
+    gen_esme34_options(T, Accm, [H|Others]).
