@@ -35,16 +35,24 @@ behaviour_info(_Other) ->
 
 
 start_link(Name, Mod, InitArgs, Options) ->
-    gen_server:start_link(Name, ?MODULE, [{'__gen_esme34_mod', Mod} | InitArgs], Options).
+    {GenEsme34Opts, Options1} = gen_esme34_options(Options),
+    InitArgs1 = lists:append([InitArgs, GenEsme34Opts]),
+    gen_server:start_link(Name, ?MODULE, [{'__gen_esme34_mod', Mod} | InitArgs1], Options1).
 
 start_link(Mod, InitArgs, Options) ->
-    gen_server:start_link(?MODULE, [{'__gen_esme34_mod', Mod} | InitArgs], Options).
+    {GenEsme34Opts, Options1} = gen_esme34_options(Options),
+    InitArgs1 = lists:append([InitArgs, GenEsme34Opts]),
+    gen_server:start_link(?MODULE, [{'__gen_esme34_mod', Mod} | InitArgs1], Options1).
 
 start(Name, Mod, InitArgs, Options) ->
-    gen_server:start(Name, ?MODULE, [{'__gen_esme34_mod', Mod} | InitArgs], Options).
+    {GenEsme34Opts, Options1} = gen_esme34_options(Options),
+    InitArgs1 = lists:append([InitArgs, GenEsme34Opts]),
+    gen_server:start(Name, ?MODULE, [{'__gen_esme34_mod', Mod} | InitArgs1], Options1).
 
 start(Mod, InitArgs, Options) ->
-    gen_server:start(?MODULE, [{'__gen_esme34_mod', Mod} | InitArgs], Options).
+    {GenEsme34Opts, Options1} = gen_esme34_options(Options),
+    InitArgs1 = lists:append([InitArgs, GenEsme34Opts]),
+    gen_server:start(?MODULE, [{'__gen_esme34_mod', Mod} | InitArgs1], Options1).
 
 call(ServerRef, Request) ->
     gen_server:call(ServerRef, Request).
