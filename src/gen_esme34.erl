@@ -104,6 +104,7 @@ init([{'__gen_esme34_mod', Mod} | InitArgs]) ->
 
     {GenEsme34Opts, InitArgs1} = gen_esme34_options(InitArgs),
     BindRespTimeout = proplists:get_value(bind_resp_timeout, GenEsme34Opts, 10000),
+    IgnoreVersion = proplists:get_value(ignore_version, GenEsme34Opts, false),
 
     case Mod:init(InitArgs1) of
         ignore ->
@@ -130,29 +131,9 @@ init([{'__gen_esme34_mod', Mod} | InitArgs]) ->
 										command_status=Status}} ->
 										{stop, {generic_nack, ?SMPP_STATUS(Status)}};
 								{esme_data, Esme, 
-									#pdu{command_status=?ESME_ROK,
-										body=#bind_receiver_resp{sc_interface_version=?VERSION}}} ->
-										{ok, St0#st_gensmpp34{pdutx=1, pdurx=1}};
-								{esme_data, Esme, 
-									#pdu{command_status=?ESME_ROK,
-										body=#bind_receiver_resp{sc_interface_version=Version}}} ->
-										{stop, {bad_smpp_version, ?SMPP_VERSION(Version)}};
-								{esme_data, Esme, 
-									#pdu{command_status=?ESME_ROK,
-										body=#bind_transceiver_resp{sc_interface_version=?VERSION}}} ->
-										{ok, St0#st_gensmpp34{pdutx=1, pdurx=1}};
-								{esme_data, Esme, 
-									#pdu{command_status=?ESME_ROK,
-										body=#bind_transceiver_resp{sc_interface_version=Version}}} ->
-										{stop, {bad_smpp_version, ?SMPP_VERSION(Version)}};
-								{esme_data, Esme, 
-									#pdu{command_status=?ESME_ROK,
-										body=#bind_transmitter_resp{sc_interface_version=?VERSION}}} ->
-										{ok, St0#st_gensmpp34{pdutx=1, pdurx=1}};
-								{esme_data, Esme, 
-									#pdu{command_status=?ESME_ROK,
-                                        body=#bind_transmitter_resp{sc_interface_version=Version}}} ->
-										{stop, {bad_smpp_version, ?SMPP_VERSION(Version)}};
+									#pdu{command_status=?ESME_ROK, body=RespBody}} ->
+                                        St1 = St0#st_gensmpp34{pdutx=1, pdurx=1},
+                                        process_bind_resp(St1, BindPdu, RespBody, IgnoreVersion);
 								{esme_data, Esme, 
 									#pdu{command_status=Status}} ->
 										{stop, ?SMPP_STATUS(Status)}
@@ -285,3 +266,23 @@ gen_esme34_options([{bind_resp_timeout, _}=H|T], Accm, Others) ->
     gen_esme34_options(T, [H|Accm], Others);
 gen_esme34_options([H|T], Accm, Others) ->
     gen_esme34_options(T, Accm, [H|Others]).
+
+process_bind_resp(St, #bind_receiver{}, #bind_receiver_resp{}, true) ->
+    {ok, St};
+process_bind_resp(St, #bind_receiver{}, #bind_receiver_resp{sc_interface_version=?VERSION}, false) ->
+    {ok, St};
+process_bind_resp(_, #bind_receiver{}, #bind_receiver_resp{sc_interface_version=Version}, false) ->
+    {stop, {bad_smpp_version, ?SMPP_VERSION(Version)}};
+process_bind_resp(St, #bind_transmitter{}, #bind_transmitter_resp{}, true) ->
+    {ok, St};
+process_bind_resp(St, #bind_transmitter{}, #bind_transmitter_resp{sc_interface_version=?VERSION}, false) ->
+    {ok, St};
+process_bind_resp(_, #bind_transmitter{}, #bind_transmitter_resp{sc_interface_version=Version}, false) ->
+    {stop, {bad_smpp_version, ?SMPP_VERSION(Version)}};
+process_bind_resp(St, #bind_transceiver{}, #bind_transceiver_resp{}, true) ->
+    {ok, St};
+process_bind_resp(St, #bind_transceiver{}, #bind_transceiver_resp{sc_interface_version=?VERSION}, false) ->
+    {ok, St};
+process_bind_resp(_, #bind_transceiver{}, #bind_transceiver_resp{sc_interface_version=Version}, false) ->
+    {stop, {bad_smpp_version, ?SMPP_VERSION(Version)}}.
+
