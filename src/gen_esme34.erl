@@ -134,9 +134,6 @@ handle_call(ping, _From, #st_gensmpp34{t1=T1, pdutx=TxCount, pdurx=RxCount}=St) 
     Uptime = timer:now_diff(now(), T1)/1000,
     {reply, {pong, [{uptime, Uptime}, {txpdu, TxCount}, {rxpdu, RxCount}]}, St};
 
-handle_call({send, Status, Body}, _From, #st_gensmpp34{esme=Esme, pdutx=Tx}=St) ->
-	{reply, smpp34_esme_core:send(Esme, Status, Body), St#st_gensmpp34{pdutx=Tx+1}};
-
 handle_call(Request, From, #st_gensmpp34{mod=Mod, mod_st=ModSt}=St) ->
     case Mod:handle_call(Request, From, ModSt) of 
         {reply, Reply, ModSt1} ->
@@ -168,6 +165,11 @@ handle_cast(Request, #st_gensmpp34{mod=Mod, mod_st=ModSt}=St) ->
         {stop, Reason, ModSt1} ->
             {stop, Reason, St#st_gensmpp34{mod_st=ModSt1}}
     end.
+
+
+handle_info({'$transmit_pdu', Status, Body, Extra}, #st_gensmpp34{esme=Esme}=St) ->
+	Reply = smpp34_esme_core:send(Esme, Status, Body),
+    handle_tx(Reply, Extra, St);
 
 
 handle_info({esme_data, Esme, Pdu}, #st_gensmpp34{mod=Mod, mod_st=ModSt, esme=Esme, pdurx=Rx}=St0) ->
