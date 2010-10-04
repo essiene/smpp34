@@ -10,14 +10,16 @@ communication infrastructure as defined by the protocol.
 It is a re-write of an internal existing smpp library and is
 written to solve the problems encountered with said library.
 
-It is in its earliest days right now, and just the core framework
-has been setup. 
+It is currently feature complete and is currently undergoing 
+mandatory maturing out in the wild, as it is being used to
+develop a real application with hundreds of thousands of 
+transactions a day.
 
+smpp34_esme
+===========
 
-Example Usage
-=============
+The following is an example of the smpp34_esme client api:
 
-When completed, an example of a simple client session will be:
 
 -module(smpp34_example).
 -export([start/0]).
@@ -46,21 +48,33 @@ start() ->
 
 
 
-gen_esme
-========
+gen_esme34
+==========
 
-while smpp34_esme will be good for direct interactions, it will not fit very
-well when building an ESME server akin to Kannel.
+smpp34_esme is a synchronous client API and it does not fit very
+well when building an ESME server akin to Kannel. It also does not fit
+into the Erlang/OTP supervision tree.
 
-This library will provide an OTP compatible behaviour 'gen_esme' for allowing
-users to simply build such a contraption.
+gen_esme34 is designed to fill these gaps. It works asynchronously, fits
+into the Erlang/OTP tree and is intended as a workhorse when building non
+trivial applications.
 
+Documentation of the internals of gen_esme34 and its design decision is at 
+docs/gen_esme34.txt
+
+Two example ESMEs built with gen_esme34 are available in the source:
+    - src/hello_esme.erl
+    - src/echo_esme.erl
 
 Status
 ======
 
-smpp34:start/0 - Yes
-smpp34_esme:connect/2 - Yes
-smpp34_esme:close/1 - Yes
-smpp34_esme:send/2 -  Yes
-smpp34_esme:recv/1 - No
+Currently the entire concept is fully implemented from end to end. So I 
+would classify this as alpha grade software.
+
+What is left now is intense code review, agressive benchmarking and 
+measurements and the invariably the optimizations and possible redesigns of
+key sections.
+
+This stage will be driven by using it to build an SMPP 3.4 gateway/application
+server. I expect it to mature better while that effort is ongoing.
