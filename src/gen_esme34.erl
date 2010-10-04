@@ -114,17 +114,38 @@ init([{'__gen_esme34_mod', Mod} | InitArgs]) ->
 							{stop, Reason};
 						{ok, _S} ->
 							receive
-								{esme_data, Esme, 
-									#pdu{command_status=?ESME_ROK}} ->
-										{ok, St0#st_gensmpp34{pdutx=1, pdurx=1}};
 								{esme_data, Esme,
 									#pdu{command_id=?GENERIC_NACK,
 										command_status=Status}} ->
-										{stop, {generic_nack, Status}};
+										{stop, {generic_nack, ?SMPP_STATUS(Status)}};
+								{esme_data, Esme, 
+									#pdu{command_status=?ESME_ROK,
+										body=#bind_receiver_resp{sc_interface_version=?VERSION}}} ->
+										{ok, St0#st_gensmpp34{pdutx=1, pdurx=1}};
+								{esme_data, Esme, 
+									#pdu{command_status=?ESME_ROK,
+										body=#bind_receiver_resp{sc_interface_version=Version}}} ->
+										{stop, {bad_smpp_version, ?SMPP_VERSION(Version)}};
+								{esme_data, Esme, 
+									#pdu{command_status=?ESME_ROK,
+										body=#bind_transceiver_resp{sc_interface_version=?VERSION}}} ->
+										{ok, St0#st_gensmpp34{pdutx=1, pdurx=1}};
+								{esme_data, Esme, 
+									#pdu{command_status=?ESME_ROK,
+										body=#bind_transceiver_resp{sc_interface_version=Version}}} ->
+										{stop, {bad_smpp_version, ?SMPP_VERSION(Version)}};
+								{esme_data, Esme, 
+									#pdu{command_status=?ESME_ROK,
+										body=#bind_transmitter_resp{sc_interface_version=?VERSION}}} ->
+										{ok, St0#st_gensmpp34{pdutx=1, pdurx=1}};
+								{esme_data, Esme, 
+									#pdu{command_status=?ESME_ROK,
+                                        body=#bind_transmitter_resp{sc_interface_version=Version}}} ->
+										{stop, {bad_smpp_version, ?SMPP_VERSION(Version)}};
 								{esme_data, Esme, 
 									#pdu{command_status=Status}} ->
-										{stop, {bad_status, Status}}
-							% This timeout should be configurable
+										{stop, ?SMPP_STATUS(Status)}
+						% This timeout should be configurable
 							after 10000 ->
 								{stop, timeout}
 							end
