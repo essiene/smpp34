@@ -285,5 +285,7 @@ process_bind_resp(St, #bind_transceiver{}, #bind_transceiver_resp{}, true) ->
 process_bind_resp(St, #bind_transceiver{}, #bind_transceiver_resp{sc_interface_version=?VERSION}, false) ->
     {ok, St};
 process_bind_resp(_, #bind_transceiver{}, #bind_transceiver_resp{sc_interface_version=Version}, false) ->
-    {stop, {bad_smpp_version, ?SMPP_VERSION(Version)}}.
+    {stop, {bad_smpp_version, ?SMPP_VERSION(Version)}};
+process_bind_resp(_, _, Response, _) ->
+    {stop, {bad_bind_response, ?SMPP_PDU2CMDID(Response)}}.
 
