@@ -25,6 +25,7 @@ start_link() ->
 
 init([]) ->
     {ok, { {one_for_one, 5, 10}, [?CHILD(smpp34_snum_sup, supervisor),
+                                  ?CHILD(smpp34_hbeat_sup, supervisor),
 			 					  ?CHILD(smpp34_tcprx_sup, supervisor),
 								  ?CHILD(smpp34_tx_sup, supervisor),
 								  ?CHILD(smpp34_rx_sup, supervisor),
