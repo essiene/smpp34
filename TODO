@@ -35,15 +35,7 @@ loaded with messages. At smpp34_esme there is a queue for storing messages and
 in gen_esme34 the user will be expected to implement queing.
 
 
-We need {ignore_version, boolean()} and {bind_resp_timeout, N} options in
-gen_esme34
-
 Other ideas worth looking into usability-wise:
 	- Behave like gen_tcp and use an {active, true|false} operational mechanism
 	- Have smpp34_esme as a simple client, exposing {active, true|false} 
       options,while then gen_esme34 as an ESME framework
-
-Ensure that the proper bind_resp PDU is sent back for each PDU bind type.
-We can do this by first packing the PDU to send, then getting its command_id
-then changing the uppermost bit to 1 to get the response pdu command_id then
-using that to match the receive clause
