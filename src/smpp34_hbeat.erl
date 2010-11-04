@@ -3,7 +3,7 @@
 -include("util.hrl").
 -behaviour(gen_server).
 
--export([start_link/1,stop/1]).
+-export([start_link/2,stop/1, enquire_link_resp/1]).
 
 -export([init/1,
         handle_call/3,
@@ -67,7 +67,7 @@ send_enquire_link(#st_hbeat{tx=Tx}=St0) ->
     RxRef = erlang:start_timer(?RESP_INTERVAL, self(), no_response),
     St0#st_hbeat{rx_tref=RxRef, tx_tref=undefined}.
 
-sched_enquire_link(#st_hbeat{rx_tref=Rxref}=St0) ->
+sched_enquire_link(#st_hbeat{rx_tref=RxRef}=St0) ->
     erlang:cancel_timer(RxRef),
     TxRef = erlang:start_timer(?ENQ_LNK_INTERVAL, self(), heartbeat),
     St0#st_hbeat{tx_tref=TxRef, rx_tref=undefined}.
