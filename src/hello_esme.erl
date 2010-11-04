@@ -5,7 +5,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
         handle_rx/2, handle_tx/3, terminate/2, code_change/3]).
 
--export([start/0, start/2, stop/0, sendsms/3, ping/0]).
+-export([start/0, start/3, stop/0, sendsms/3, ping/0]).
 
 -record(state, {host, port, system_id, password, owner, mref}).
 
@@ -13,9 +13,9 @@ start() ->
 	application:start(smpp34),
     gen_esme34:start({local, ?MODULE}, ?MODULE, [self(), "localhost", 10000, "mmayen", "mmayen"], [{ignore_version, true}]).
 
-start(Host, Port) ->
+start(Host, Port, IgnoreVersion) ->
 	application:start(smpp34),
-    gen_esme34:start({local, ?MODULE}, ?MODULE, [self(), Host, Port, "mmayen", "mmayen"], []).
+    gen_esme34:start({local, ?MODULE}, ?MODULE, [self(), Host, Port, "mmayen", "mmayen"], [{ignore_version, IgnoreVersion}]).
 
 stop() ->
     gen_esme34:cast(?MODULE, stop).

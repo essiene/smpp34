@@ -5,13 +5,17 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
         handle_rx/2, handle_tx/3, terminate/2, code_change/3]).
 
--export([start/0, stop/0, sendsms/3]).
+-export([start/0, start/3, stop/0, sendsms/3]).
 
 -record(state, {host, port, system_id, password}).
 
 start() ->
 	smpp34:start(),
     gen_esme34:start({local, ?MODULE}, ?MODULE, ["localhost", 10000, "mmayen", "mmayen"], [{ignore_version, true}]).
+
+start(Host, Port, IgnoreVersion) ->
+	smpp34:start(),
+    gen_esme34:start({local, ?MODULE}, ?MODULE, [Host, Port, "mmayen", "mmayen"], [{ignore_version, IgnoreVersion}]).
 
 stop() ->
     gen_esme34:cast(?MODULE, stop).
@@ -22,7 +26,7 @@ sendsms(Source, Dest, Msg) ->
 
 init([Host, Port, SystemId, Password]) ->
     {ok, {Host, Port, 
-            #bind_receiver{system_id=SystemId, password=Password}}, 
+            #bind_transceiver{system_id=SystemId, password=Password}}, 
             #state{host=Host, port=Port, system_id=SystemId, password=Password}}.
 
 
