@@ -14,7 +14,7 @@
         code_change/3]).
 
 
--record(state, {owner,monitref,socket,snum, snum_monitref}).
+-record(st_tx, {owner,monitref,socket,snum, snum_monitref}).
 
 start_link(Owner, Socket) ->
     gen_server:start_link(?MODULE, [Owner, Socket], []).
@@ -41,19 +41,19 @@ init([Owner, Socket]) ->
 			{stop, Reason};
 		{ok, Snum} ->
 			SnumMonitRef = erlang:monitor(process, Snum),
-			{ok, #state{owner=Owner, monitref=MonitorRef, socket=Socket,
+			{ok, #st_tx{owner=Owner, monitref=MonitorRef, socket=Socket,
 						   snum=Snum, snum_monitref=SnumMonitRef}}
 	end.
 
-handle_call(ping, _From, #state{owner=Owner, socket=Socket, snum=Snum}=St) ->
+handle_call(ping, _From, #st_tx{owner=Owner, socket=Socket, snum=Snum}=St) ->
 	{reply, {pong, [{owner, Owner}, {socket, Socket}, {snum, Snum}]}, St};
 handle_call({send, Status, Body}, _From, 
-				#state{socket=Socket, snum=Snum}=St) ->
+				#st_tx{socket=Socket, snum=Snum}=St) ->
 	{ok, Num} = smpp34_snum:next(Snum),
 	Bin = smpp34pdu:pack(Status, Num, Body),
 	ok = gen_tcp:send(Socket, Bin),
 	{reply, {ok, Num}, St};
-handle_call({send, Status, Num, Body},_From, #state{socket=Socket}=St)->
+handle_call({send, Status, Num, Body},_From, #st_tx{socket=Socket}=St)->
 	Bin = smpp34pdu:pack(Status, Num, Body),
 	ok = gen_tcp:send(Socket, Bin),
 	{reply, {ok, Num}, St};
@@ -65,9 +65,9 @@ handle_cast(stop, St) ->
 handle_cast(_Req, St) ->
     {noreply, St}.
 
-handle_info(#'DOWN'{ref=MonitorRef}, #state{monitref=MonitorRef}=St) ->
+handle_info(#'DOWN'{ref=MonitorRef}, #st_tx{monitref=MonitorRef}=St) ->
 	{stop, normal, St};
-handle_info(#'DOWN'{ref=SnumMonitRef}, #state{snum_monitref=SnumMonitRef}=St) ->
+handle_info(#'DOWN'{ref=SnumMonitRef}, #st_tx{snum_monitref=SnumMonitRef}=St) ->
 	{stop, normal, St};
 handle_info(_Req, St) ->
 	{noreply, St}.
