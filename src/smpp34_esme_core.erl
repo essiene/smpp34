@@ -6,7 +6,7 @@
 
 -define(SOCK_OPTS, [binary, {packet, raw}, {active, once}]).
 
--record(st, {owner, mref,
+-record(st_esmecore, {owner, mref,
 			 tx, tx_mref, 
 		     rx, rx_mref,
 			 params, socket}).
@@ -49,45 +49,45 @@ send(Pid, Status, Snum, Body) ->
 init([Owner, Host, Port]) ->
 	process_flag(trap_exit, true),
 	Mref = erlang:monitor(process, Owner),
-	St = #st{owner=Owner, mref=Mref},
+	St = #st_esmecore{owner=Owner, mref=Mref},
 	case gen_tcp:connect(Host, Port, ?SOCK_OPTS) of
 		{error, Reason} ->
 			{stop, Reason};
 		{ok, Socket} ->
-			St0 = St#st{socket=Socket},
+			St0 = St#st_esmecore{socket=Socket},
 
 			case smpp34_tx_sup:start_child(Socket) of
 				{error, Reason} ->
 					{stop, Reason};
 				{ok, Tx} ->
-					St1 = St0#st{tx=Tx},
+					St1 = St0#st_esmecore{tx=Tx},
 
 					TxMref = erlang:monitor(process, Tx),
-					St2 = St1#st{tx_mref=TxMref},
+					St2 = St1#st_esmecore{tx_mref=TxMref},
 
 					case smpp34_rx_sup:start_child(Tx, Socket) of
 						{error, Reason} ->
 							{stop, Reason};
 						{ok, Rx} ->
-							St3 = St2#st{rx=Rx},
+							St3 = St2#st_esmecore{rx=Rx},
 
 							RxMref = erlang:monitor(process, Rx),
-							St4 = St3#st{rx_mref=RxMref},
+							St4 = St3#st_esmecore{rx_mref=RxMref},
 
 							case smpp34_rx:controll_socket(Rx, Socket) of
 								{error, Reason} ->
 									{stop, Reason};
 								ok ->
-									{ok, St4#st{params={Host, Port}}}
+									{ok, St4#st_esmecore{params={Host, Port}}}
 							end
 					end
 			end
 	end.
 
 
-handle_call({tx, Status, Body}, _From, #st{tx=Tx}=St) ->
+handle_call({tx, Status, Body}, _From, #st_esmecore{tx=Tx}=St) ->
   {reply, catch(smpp34_tx:send(Tx, Status, Body)), St};
-handle_call({tx, Status, Snum, Body}, _From, #st{tx=Tx}=St) ->
+handle_call({tx, Status, Snum, Body}, _From, #st_esmecore{tx=Tx}=St) ->
   {reply, catch(smpp34_tx:send(Tx, Status, Snum, Body)), St};
 handle_call(stop, _From, St) ->
   {stop, normal, ok, St};
@@ -99,14 +99,14 @@ handle_cast(_R, St) ->
   {noreply, St}.
 
 
-handle_info({Rx, Pdu}, #st{rx=Rx, owner=Owner}=St) ->
+handle_info({Rx, Pdu}, #st_esmecore{rx=Rx, owner=Owner}=St) ->
   Owner ! {esme_data, self(), Pdu},
   {noreply, St};
-handle_info(#'DOWN'{ref=MRef}, #st{mref=MRef}=St) ->
+handle_info(#'DOWN'{ref=MRef}, #st_esmecore{mref=MRef}=St) ->
   {stop, normal, St};
-handle_info(#'DOWN'{ref=MRef}, #st{tx_mref=MRef}=St) ->
+handle_info(#'DOWN'{ref=MRef}, #st_esmecore{tx_mref=MRef}=St) ->
   {stop, normal, St};
-handle_info(#'DOWN'{ref=MRef}, #st{rx_mref=MRef}=St) ->
+handle_info(#'DOWN'{ref=MRef}, #st_esmecore{rx_mref=MRef}=St) ->
   {stop, normal, St};
 handle_info(_Info, St) ->
   {noreply, St}.
