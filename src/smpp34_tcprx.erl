@@ -13,7 +13,7 @@
         code_change/3]).
 
 
--record(state, {owner,mref,socket,pdusink,data, send_unbind=true}).
+-record(st_tcprx, {owner,mref,socket,pdusink,data, send_unbind=true}).
 
 start_link(Owner, Socket, PduSink) ->
     gen_server:start_link(?MODULE, [Owner, Socket, PduSink], []).
@@ -24,7 +24,7 @@ stop(Pid) ->
 init([Owner, Socket, PduSink]) ->
 	process_flag(trap_exit, true),
 	Mref = erlang:monitor(process, Owner),
-    {ok, #state{owner=Owner, mref=Mref, socket=Socket,
+    {ok, #st_tcprx{owner=Owner, mref=Mref, socket=Socket,
 				   pdusink=PduSink, data = <<>>}}.
 
 handle_call(Req, _From, St) ->
@@ -35,33 +35,33 @@ handle_cast(stop, St) ->
 handle_cast(_Req, St) ->
     {noreply, St}.
 
-handle_info({tcp, Socket, Data}, #state{socket=Socket, data=Data0, pdusink=PduSink}=St) ->
+handle_info({tcp, Socket, Data}, #st_tcprx{socket=Socket, data=Data0, pdusink=PduSink}=St) ->
     Data1 = <<Data0/binary,Data/binary>>,
 	{_, PduList, Rest} = smpp34pdu:unpack(Data1), 
 	smpp34_rx:deliver(PduSink, PduList), 
 	inet:setopts(Socket, [{active, once}]), 
-	{noreply, St#state{data=Rest}};
-handle_info({tcp_closed, Socket}, #state{socket=Socket}=St) ->
-	{stop, tcp_closed, St#state{send_unbind=false}};
-handle_info({tcp_error, Socket, Reason}, #state{socket=Socket}=St) ->
+	{noreply, St#st_tcprx{data=Rest}};
+handle_info({tcp_closed, Socket}, #st_tcprx{socket=Socket}=St) ->
+	{stop, tcp_closed, St#st_tcprx{send_unbind=false}};
+handle_info({tcp_error, Socket, Reason}, #st_tcprx{socket=Socket}=St) ->
 	% Well, I don't think it makes sense to attempt to 
 	% continue when a TCP error occurs. Better bail here, so
 	% the monitoring process will also bail.
 
-	{stop, {tcp_error, Reason}, St#state{send_unbind=false}};
-handle_info(#'DOWN'{ref=Mref, reason=unbind}, #state{mref=Mref, send_unbind=false}=St) ->
+	{stop, {tcp_error, Reason}, St#st_tcprx{send_unbind=false}};
+handle_info(#'DOWN'{ref=Mref, reason=unbind}, #st_tcprx{mref=Mref, send_unbind=false}=St) ->
 	{stop, normal, St};
-handle_info(#'DOWN'{ref=Mref, reason=unbind_resp}, #state{mref=Mref, send_unbind=false}=St) ->
+handle_info(#'DOWN'{ref=Mref, reason=unbind_resp}, #st_tcprx{mref=Mref, send_unbind=false}=St) ->
 	{stop, normal, St};
-handle_info(#'DOWN'{ref=Mref}, #state{mref=Mref}=St) ->
+handle_info(#'DOWN'{ref=Mref}, #st_tcprx{mref=Mref}=St) ->
 	{stop, normal, St};
 handle_info(_Req, St) ->
 	{noreply, St}.
 
-terminate(_, #state{socket=S, send_unbind=false}) ->
+terminate(_, #st_tcprx{socket=S, send_unbind=false}) ->
 	catch(gen_tcp:close(S)),
     ok;
-terminate(_, #state{socket=S}) ->
+terminate(_, #st_tcprx{socket=S}) ->
 	% We are the controlling_process, so the socket will be
 	% closed when we exit. We have to send #unbind{} here
 
