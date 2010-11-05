@@ -12,7 +12,7 @@
         terminate/2,
         code_change/3]).
 
--record(state, {owner, count, monitref}).
+-record(st_snum, {owner, count, monitref}).
 
 start_link(Owner) ->
 	start_link(Owner, 0).
@@ -33,16 +33,16 @@ ping(Pid) ->
 init([Owner, Start]) ->
 	process_flag(trap_exit, true),
 	MonitorRef = erlang:monitor(process, Owner),
-    {ok, #state{owner=Owner, count=Start, monitref=MonitorRef}}.
+    {ok, #st_snum{owner=Owner, count=Start, monitref=MonitorRef}}.
 
-handle_call(ping, _From, #state{owner=Owner, count=Count}=St) ->
+handle_call(ping, _From, #st_snum{owner=Owner, count=Count}=St) ->
 	{reply, {pong, [{owner=Owner}, {count,Count}]}, St};
-handle_call(next, _From, #state{count=?SNUM_MAX}=St) ->
+handle_call(next, _From, #st_snum{count=?SNUM_MAX}=St) ->
     N1 = 1,
-    {reply, {ok, N1}, St#state{count=N1}};
-handle_call(next, _From, #state{count=N}=St) ->
+    {reply, {ok, N1}, St#st_snum{count=N1}};
+handle_call(next, _From, #st_snum{count=N}=St) ->
     N1 = N+1,
-    {reply, {ok, N1}, St#state{count=N1}};
+    {reply, {ok, N1}, St#st_snum{count=N1}};
 handle_call(Req, _From, St) ->
     {reply, {error, Req}, St}.
 
@@ -51,7 +51,7 @@ handle_cast(stop, St) ->
 handle_cast(_Req, St) ->
     {noreply, St}.
 
-handle_info(#'DOWN'{ref=MonitorRef}, #state{monitref=MonitorRef}=St) ->
+handle_info(#'DOWN'{ref=MonitorRef}, #st_snum{monitref=MonitorRef}=St) ->
 	{stop, normal, St};
 handle_info(_Req, St) ->
     {noreply, St}.
