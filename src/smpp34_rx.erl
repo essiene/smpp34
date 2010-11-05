@@ -13,7 +13,7 @@
         terminate/2,
         code_change/3]).
 
--record(state, {owner, mref, tx, tx_mref, rx, rx_mref, hb, hb_mref}).
+-record(st_rx, {owner, mref, tx, tx_mref, rx, rx_mref, hb, hb_mref}).
 
 start_link(Owner, Tx, Socket) ->
     gen_server:start_link(?MODULE, [Owner, Tx, Socket], []).
@@ -51,34 +51,34 @@ init([Owner, Tx, Socket]) ->
                 {ok, Hb} ->
                     HbMref = erlang:monitor(process, Hb),
                     {ok, 
-                        #state{owner=Owner, mref=MRef, 
+                        #st_rx{owner=Owner, mref=MRef, 
                                tx=Tx, tx_mref=TxMref,
                                rx=Rx, rx_mref=RxMref,
                                hb=Hb, hb_mref=HbMref}}
              end
 	end.
 
-handle_call(getrx, _From, #state{rx=Rx}=St) ->
+handle_call(getrx, _From, #st_rx{rx=Rx}=St) ->
 	{reply, {ok, Rx}, St};
-handle_call(ping, _From, #state{owner=Owner, tx=Tx, rx=Rx}=St) ->
+handle_call(ping, _From, #st_rx{owner=Owner, tx=Tx, rx=Rx}=St) ->
 	{reply, {pong, [{owner,Owner}, {tx,Tx}, {rx, Rx}]}, St};
 handle_call(Req, _From, St) ->
     {reply, {error, Req}, St}.
 
 handle_cast({Rx, #pdu{sequence_number=Snum, body=#enquire_link{}}}, 
-					#state{tx=Tx, rx=Rx}=St) ->	
+					#st_rx{tx=Tx, rx=Rx}=St) ->	
 	tx_send(Tx, ?ESME_ROK, Snum, #enquire_link_resp{}),
 	{noreply, St};
 handle_cast({Rx, #pdu{sequence_number=Snum, body=#unbind{}}}, 
-					#state{tx=Tx, rx=Rx}=St) ->	
+					#st_rx{tx=Tx, rx=Rx}=St) ->	
 	tx_send(Tx, ?ESME_ROK, Snum, #unbind_resp{}),
 	{stop, unbind, St};
-handle_cast({Rx, #pdu{body=#enquire_link_resp{}}}, #state{rx=Rx, hb=Hb}=St) ->	
+handle_cast({Rx, #pdu{body=#enquire_link_resp{}}}, #st_rx{rx=Rx, hb=Hb}=St) ->	
     smpp34_hbeat:enquire_link_resp(Hb),
     {noreply, St};
-handle_cast({Rx, #pdu{body=#unbind_resp{}}}, #state{rx=Rx}=St) ->	
+handle_cast({Rx, #pdu{body=#unbind_resp{}}}, #st_rx{rx=Rx}=St) ->	
 	{stop, unbind_resp, St};
-handle_cast({Rx, #pdu{}=Pdu}, #state{owner=Owner, rx=Rx}=St) ->
+handle_cast({Rx, #pdu{}=Pdu}, #st_rx{owner=Owner, rx=Rx}=St) ->
 	owner_send(Owner, Pdu),
 	{noreply, St};
 handle_cast(stop, St) ->
@@ -86,13 +86,13 @@ handle_cast(stop, St) ->
 handle_cast(_Req, St) ->
     {noreply, St}.
 
-handle_info(#'DOWN'{ref=MRef}, #state{tx_mref=MRef}=St) ->
-	{noreply, St#state{tx=undefined, tx_mref=undefined}};
-handle_info(#'DOWN'{ref=MRef}, #state{rx_mref=MRef}=St) ->
+handle_info(#'DOWN'{ref=MRef}, #st_rx{tx_mref=MRef}=St) ->
+	{noreply, St#st_rx{tx=undefined, tx_mref=undefined}};
+handle_info(#'DOWN'{ref=MRef}, #st_rx{rx_mref=MRef}=St) ->
 	{stop, normal, St};
-handle_info(#'DOWN'{ref=MRef}, #state{hb_mref=MRef}=St) ->
+handle_info(#'DOWN'{ref=MRef}, #st_rx{hb_mref=MRef}=St) ->
 	{stop, normal, St};
-handle_info(#'DOWN'{ref=MRef}, #state{mref=MRef}=St) ->
+handle_info(#'DOWN'{ref=MRef}, #st_rx{mref=MRef}=St) ->
 	{stop, normal, St};
 handle_info(_Req, St) ->
     {noreply, St}.
