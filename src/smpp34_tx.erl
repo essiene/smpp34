@@ -67,8 +67,8 @@ handle_cast(_Req, St) ->
 
 handle_info(#'DOWN'{ref=MonitorRef}, #state{monitref=MonitorRef}=St) ->
 	{stop, normal, St};
-handle_info(#'DOWN'{ref=SnumMonitRef, reason=R}, #state{snum_monitref=SnumMonitRef}=St) ->
-	{stop, R, St};
+handle_info(#'DOWN'{ref=SnumMonitRef}, #state{snum_monitref=SnumMonitRef}=St) ->
+	{stop, normal, St};
 handle_info(_Req, St) ->
 	{noreply, St}.
 

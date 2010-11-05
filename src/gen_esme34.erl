@@ -204,8 +204,8 @@ handle_info({esme_data, Esme, Pdu}, #st_gensmpp34{mod=Mod, mod_st=ModSt, esme=Es
         {stop, Reason, ModSt1} ->
             {stop, Reason, St#st_gensmpp34{mod_st=ModSt1}}
     end;
-handle_info(#'DOWN'{ref=Mref, reason=R}, #st_gensmpp34{esme_mref=Mref}=St) ->
-	{stop, R, St};
+handle_info(#'DOWN'{ref=Mref}, #st_gensmpp34{esme_mref=Mref}=St) ->
+	{stop, normal, St};
 handle_info(Info, #st_gensmpp34{mod=Mod, mod_st=ModSt}=St) ->
     case Mod:handle_info(Info, ModSt) of
         {noreply, ModSt1} ->

@@ -104,10 +104,10 @@ handle_info({Rx, Pdu}, #st{rx=Rx, owner=Owner}=St) ->
   {noreply, St};
 handle_info(#'DOWN'{ref=MRef}, #st{mref=MRef}=St) ->
   {stop, normal, St};
-handle_info(#'DOWN'{ref=MRef, reason=R}, #st{tx_mref=MRef}=St) ->
-  {stop, R, St};
-handle_info(#'DOWN'{ref=MRef, reason=R}, #st{rx_mref=MRef}=St) ->
-  {stop, R, St};
+handle_info(#'DOWN'{ref=MRef}, #st{tx_mref=MRef}=St) ->
+  {stop, normal, St};
+handle_info(#'DOWN'{ref=MRef}, #st{rx_mref=MRef}=St) ->
+  {stop, normal, St};
 handle_info(_Info, St) ->
   {noreply, St}.
 
