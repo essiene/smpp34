@@ -6,13 +6,6 @@ unbind. If we initiate an unbind, we normally should wait for an unbind_resp{}
 from the SMSC before we shutdown RX. We should not wait for all eternity... ;)
 
 
-When logging, the gen_server, gen_fsm states are usually included in the log
-detail. I've noticed that if I use a the same name for all the states, then the
-logs are harder to decipher, as its confusing knowing which module produced the
-error. I'll need to rename the state records to reflect which the module
-properly so the errors are easier to decipher
-
-
 Track some statistics:
 	- Uptime: Tracked by esme_core
 	- txcounter: smpp34_tx
