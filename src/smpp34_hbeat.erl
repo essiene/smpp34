@@ -50,7 +50,8 @@ handle_info({timeout, TxRef, heartbeat}, #st_hbeat{tx_tref=TxRef}=St0) ->
     St1 = send_enquire_link(St0),
     {noreply, St1};
 handle_info({timeout, RxRef, no_response}, #st_hbeat{rx_tref=RxRef}=St) ->
-    {stop, enquire_link_fail, St};
+    %log a warning and continue
+    {noreply, sched_enquire_link(St)};
 handle_info(#'DOWN'{ref=MonitorRef}, #st_hbeat{monitref=MonitorRef}=St) ->
 	{stop, normal, St};
 handle_info(_Req, St) ->
