@@ -15,7 +15,7 @@
 %% API Function Exports
 %% ------------------------------------------------------------------
 
--export([start_link/3, stop/1, send/2, send/3, send/4]).
+-export([start_link/3, stop/1, send/2, send/3, send/4, deliver/2]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
@@ -41,6 +41,9 @@ send(Pid, Status, Body) ->
 
 send(Pid, Status, Snum, Body) ->
 	gen_server:call(Pid, {tx, Status, Snum, Body}).
+
+deliver(Pid, Pdu) ->
+    gen_server:call(Pid, {deliver, self(), Pdu}).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
@@ -85,6 +88,9 @@ init([Owner, Host, Port]) ->
 	end.
 
 
+handle_call({deliver, Rx, Pdu}, _From, #st_esmecore{rx=Rx, owner=Owner}=St) ->
+  Owner ! {esme_data, self(), Pdu},
+  {reply, ok, St};
 handle_call({tx, Status, Body}, _From, #st_esmecore{tx=Tx}=St) ->
   {reply, catch(smpp34_tx:send(Tx, Status, Body)), St};
 handle_call({tx, Status, Snum, Body}, _From, #st_esmecore{tx=Tx}=St) ->
@@ -99,9 +105,6 @@ handle_cast(_R, St) ->
   {noreply, St}.
 
 
-handle_info({Rx, Pdu}, #st_esmecore{rx=Rx, owner=Owner}=St) ->
-  Owner ! {esme_data, self(), Pdu},
-  {noreply, St};
 handle_info(#'DOWN'{ref=MRef}, #st_esmecore{mref=MRef}=St) ->
   {stop, normal, St};
 handle_info(#'DOWN'{ref=MRef}, #st_esmecore{tx_mref=MRef}=St) ->

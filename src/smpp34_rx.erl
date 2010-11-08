@@ -111,4 +111,4 @@ tx_send(Tx, Status, Snum, Body) ->
 	catch(smpp34_tx:send(Tx, Status, Snum, Body)).
 
 owner_send(Owner, Pdu) ->
-	Owner ! {self(), Pdu}.
+    smpp34_esme_core:deliver(Owner, Pdu).
