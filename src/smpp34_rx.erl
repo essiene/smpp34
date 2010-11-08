@@ -58,6 +58,23 @@ init([Owner, Tx, Socket]) ->
              end
 	end.
 
+
+handle_call({Rx, #pdu{sequence_number=Snum, body=#enquire_link{}}}, _F,
+					#st_rx{tx=Tx, rx=Rx}=St) ->	
+    {ok, Snum} = tx_send(Tx, ?ESME_ROK, Snum, #enquire_link_resp{}),
+	{reply, ok, St};
+handle_call({Rx, #pdu{sequence_number=Snum, body=#unbind{}}}, _F,
+					#st_rx{tx=Tx, rx=Rx}=St) ->	
+    {ok, Snum} = tx_send(Tx, ?ESME_ROK, Snum, #unbind_resp{}), _F,
+	{stop, unbind, St};
+handle_call({Rx, #pdu{body=#enquire_link_resp{}}}, _F, #st_rx{rx=Rx, hb=Hb}=St) ->	
+    ok = smpp34_hbeat:enquire_link_resp(Hb),
+    {reply, ok, St};
+handle_call({Rx, #pdu{body=#unbind_resp{}}}, _F, #st_rx{rx=Rx}=St) ->	
+	{stop, unbind_resp, St};
+handle_call({Rx, #pdu{}=Pdu}, _F, #st_rx{owner=Owner, rx=Rx}=St) ->
+	ok = owner_send(Owner, Pdu),
+	{reply, ok, St};
 handle_call(getrx, _From, #st_rx{rx=Rx}=St) ->
 	{reply, {ok, Rx}, St};
 handle_call(ping, _From, #st_rx{owner=Owner, tx=Tx, rx=Rx}=St) ->
@@ -65,22 +82,6 @@ handle_call(ping, _From, #st_rx{owner=Owner, tx=Tx, rx=Rx}=St) ->
 handle_call(Req, _From, St) ->
     {reply, {error, Req}, St}.
 
-handle_cast({Rx, #pdu{sequence_number=Snum, body=#enquire_link{}}}, 
-					#st_rx{tx=Tx, rx=Rx}=St) ->	
-	tx_send(Tx, ?ESME_ROK, Snum, #enquire_link_resp{}),
-	{noreply, St};
-handle_cast({Rx, #pdu{sequence_number=Snum, body=#unbind{}}}, 
-					#st_rx{tx=Tx, rx=Rx}=St) ->	
-	tx_send(Tx, ?ESME_ROK, Snum, #unbind_resp{}),
-	{stop, unbind, St};
-handle_cast({Rx, #pdu{body=#enquire_link_resp{}}}, #st_rx{rx=Rx, hb=Hb}=St) ->	
-    smpp34_hbeat:enquire_link_resp(Hb),
-    {noreply, St};
-handle_cast({Rx, #pdu{body=#unbind_resp{}}}, #st_rx{rx=Rx}=St) ->	
-	{stop, unbind_resp, St};
-handle_cast({Rx, #pdu{}=Pdu}, #st_rx{owner=Owner, rx=Rx}=St) ->
-	owner_send(Owner, Pdu),
-	{noreply, St};
 handle_cast(stop, St) ->
     {stop, normal, St};
 handle_cast(_Req, St) ->
