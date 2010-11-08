@@ -34,7 +34,7 @@ deliver(Pid, [Head|Rest]) ->
 	deliver(Pid, Head),
 	deliver(Pid, Rest);
 deliver(Pid, Pdu) ->
-	gen_server:cast(Pid, {self(), Pdu}).
+	gen_server:call(Pid, {self(), Pdu}).
 
 init([Owner, Tx, Socket]) ->
 	process_flag(trap_exit, true),
