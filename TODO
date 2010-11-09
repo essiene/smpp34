@@ -20,14 +20,6 @@ Build a disconnected socket interface for handling closing and opening of
 sockets at the lower level? Or handle disconnections _in_ the smpp34_esme core
 itself? Consider patching gen_tcp too
 
-Apparently, overuse of asynchronous messaging withing the esme_core framework
-can cause mailboxes to fill too fast and affect performance. It would seem that
-the best thing to do, is to actually use synchronous calls to pass PDUs
-among the different esme_core layers, so that the entire stack is never over
-loaded with messages. At smpp34_esme there is a queue for storing messages and
-in gen_esme34 the user will be expected to implement queing.
-
-
 Other ideas worth looking into usability-wise:
 	- Behave like gen_tcp and use an {active, true|false} operational mechanism
 	- Have smpp34_esme as a simple client, exposing {active, true|false} 
