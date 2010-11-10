@@ -69,7 +69,12 @@ send_enquire_link(#st_hbeat{tx=Tx}=St0) ->
     St0#st_hbeat{rx_tref=RxRef, tx_tref=undefined}.
 
 sched_enquire_link(#st_hbeat{rx_tref=RxRef}=St0) ->
-    erlang:cancel_timer(RxRef),
+    case RxRef of
+        undefined ->
+            ok;
+        R -> 
+            erlang:cancel_timer(R)
+    end,
     TxRef = erlang:start_timer(?ENQ_LNK_INTERVAL, self(), heartbeat),
     St0#st_hbeat{tx_tref=TxRef, rx_tref=undefined}.
 
