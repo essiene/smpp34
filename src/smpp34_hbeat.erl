@@ -64,7 +64,7 @@ code_change(_OldVsn, St, _Extra) ->
     {noreply, St}.
 
 send_enquire_link(#st_hbeat{tx=Tx}=St0) ->
-    catch(smpp34_tx:send(Tx, ?ESME_ROK, #enquire_link{})),
+    {ok, _Snum} = smpp34_tx:send(Tx, ?ESME_ROK, #enquire_link{}),
     RxRef = erlang:start_timer(?RESP_INTERVAL, self(), no_response),
     St0#st_hbeat{rx_tref=RxRef, tx_tref=undefined}.
 
