@@ -51,10 +51,10 @@ handle_info({tcp_error, Socket, Reason}, #st_tcprx{socket=Socket}=St) ->
 
     %log {tcp_error, Reason} here
 	{stop, normal, St#st_tcprx{send_unbind=false}};
-handle_info(#'DOWN'{ref=Mref, reason=unbind}, #st_tcprx{mref=Mref, send_unbind=false}=St) ->
-	{stop, normal, St};
-handle_info(#'DOWN'{ref=Mref, reason=unbind_resp}, #st_tcprx{mref=Mref, send_unbind=false}=St) ->
-	{stop, normal, St};
+handle_info(#'DOWN'{ref=Mref, reason=unbind}, #st_tcprx{mref=Mref}=St) ->
+	{stop, normal, St#st_tcprx{send_unbind=false}};
+handle_info(#'DOWN'{ref=Mref, reason=unbind_resp}, #st_tcprx{mref=Mref}=St) ->
+	{stop, normal, St#st_tcprx{send_unbind=false}};
 handle_info(#'DOWN'{ref=Mref}, #st_tcprx{mref=Mref}=St) ->
 	{stop, normal, St};
 handle_info(_Req, St) ->
