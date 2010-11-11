@@ -30,7 +30,10 @@ enquire_link_resp(Pid) ->
 init([Owner, Tx]) ->
 	process_flag(trap_exit, true),
 	MonitorRef = erlang:monitor(process, Owner),
-    {ok, #st_hbeat{owner=Owner, tx=Tx, monitref=MonitorRef, reqs=[]}, 500}.
+    Tref = gen_fsm:send_event_after(?ENQ_LNK_INTERVAL, send_enquire_link),
+    {ok, transmit_scheduled, 
+        #st_hbeat{owner=Owner, tx=Tx, tx_tref=Tref, 
+                  monitref=MonitorRef, reqs=[]}}.
 
 
 
