@@ -40,6 +40,8 @@ init([Owner, Tx]) ->
 handle_sync_event(E, _F, State, StData) ->
     {reply, {error, E}, State, StData}.
 
+handle_event(stop, _State, StData) ->
+    {stop, normal, StData};
 handle_event(_E, State, StData) ->
     {next_state, State, StData}.
 
