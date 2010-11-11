@@ -29,7 +29,7 @@ stop(Pid) ->
     gen_fsm:send_all_state_event(Pid, stop).
 
 enquire_link_resp(Pid, Snum) ->
-    gen_fsm:send_sync_event(Pid, {enquire_link_resp, Snum, self()}).
+    gen_fsm:sync_send_event(Pid, {enquire_link_resp, Snum, self()}).
 
 
 transmit_scheduled(send_enquire_link, St0) ->
