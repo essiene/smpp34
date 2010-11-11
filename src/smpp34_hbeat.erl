@@ -18,13 +18,13 @@
 -define(RESP_INTERVAL, 30000).
 
 start_link(Owner, Tx) ->
-    gen_server:start_link(?MODULE, [Owner, Tx], []).
+    gen_fsm:start_link(?MODULE, [Owner, Tx], []).
 
 stop(Pid) ->
-    gen_server:cast(Pid, stop).
+    gen_fsm:send_all_state_event(Pid, stop).
 
 enquire_link_resp(Pid) ->
-    gen_server:call(Pid, {enquire_link_resp, self()}).
+    gen_fsm:send_sync_event(Pid, {enquire_link_resp, self()}).
 
 
 init([Owner, Tx]) ->
