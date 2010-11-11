@@ -32,17 +32,17 @@ enquire_link_resp(Pid, Snum) ->
     gen_fsm:send_sync_event(Pid, {enquire_link_resp, Snum, self()}).
 
 
-transmit_scheduled(send_enquire_link, #st_hbeat{tx=Tx, reqs=Reqs0, 
-                   resp_time=RespTime}=St0) ->
-    St1 = St0#st_hbeat{tx_tref=undefined},
+transmit_scheduled(send_enquire_link, St0) ->
 
-    {ok, Snum} = smpp34_tx:send(Tx, ?ESME_ROK, #enquire_link{}),
-    T1 = erlang:now(),
-    Reqs1 = [{Snum, T1}|Reqs0],
+    {St1, Snum} = transmit_enquire_link(St0),
+    St2 = schedule_late_response(St1, Snum),
 
-    Tref = gen_fsm:send_event_after(RespTime, {late_response, Snum}),
 
-    {next_state, enquire_link_sent, St1#st_hbeat{reqs=Reqs1, rx_tref=Tref}};
+    {next_state, enquire_link_sent, St2};
+
+transmit_scheduled(_E, St) ->
+    {next_state, transmit_scheduled, St}.
+
 
 transmit_scheduled({enquire_link_resp, Snum, Owner}, #st_hbeat{owner=Owner,
                     reqs=Reqs0, resp_time=RespTime1}=St0) ->
@@ -63,9 +63,6 @@ transmit_scheduled({enquire_link_resp, Snum, Owner}, #st_hbeat{owner=Owner,
                     {next_state, transmit_scheduled, St1#st_hbeat{resp_time=N}}
             end
     end;
-
-transmit_scheduled(_E, St) ->
-    {next_state, transmit_scheduled, St}.
 
 transmit_scheduled(E, _F, St) ->
     {reply, {error, E}, transmit_scheduled, St}.
@@ -117,3 +114,16 @@ schedule_transmit(#st_hbeat{}=St0) ->
     Tref = gen_fsm:send_event_after(?ENQ_LNK_INTERVAL, send_enquire_link),
     St1#st_hbeat{tx_tref=Tref}.
 
+transmit_enquire_link(#st_hbeat{tx=Tx, reqs=Reqs0}=St0) ->
+    St1 = St0#st_hbeat{tx_tref=undefined},
+
+    {ok, Snum} = smpp34_tx:send(Tx, ?ESME_ROK, #enquire_link{}),
+
+    T1 = erlang:now(),
+    Reqs1 = [{Snum, T1}|Reqs0],
+
+    {St1#st_hbeat{reqs=Reqs1}, Snum}.
+
+schedule_late_response(#st_hbeat{resp_time=RespTime}=St, Snum) ->
+    Tref = gen_fsm:send_event_after(RespTime, {late_response, Snum}),
+    St#st_hbeat{rx_tref=Tref}.
