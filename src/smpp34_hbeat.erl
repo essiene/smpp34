@@ -70,6 +70,14 @@ transmit_scheduled(_E, St) ->
 transmit_scheduled(E, _F, St) ->
     {reply, {error, E}, transmit_scheduled, St}.
 
+
+enquire_link_sent({late_response, Snum}, #st_hbeat{}) ->
+    %log this
+    St1 = St0#st_hbeat{rx_tref=undefined},
+
+    Tref = gen_fsm:send_event_after(?ENQ_LNK_INTERVAL, send_enquire_link),
+    {next_state, transmit_scheduled, St1#st_hbeat{tx_tref=Tref}};
+
 enquire_link_sent(_E, St) ->
     {next_state, enquire_link_sent, St}.
 
