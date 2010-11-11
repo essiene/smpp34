@@ -3,7 +3,7 @@
 -include("util.hrl").
 -behaviour(gen_fsm).
 
--export([start_link/2,stop/1, enquire_link_resp/1]).
+-export([start_link/2,stop/1, enquire_link_resp/2]).
 
 -export([init/1,
         handle_sync_event/4,
@@ -28,8 +28,8 @@ start_link(Owner, Tx) ->
 stop(Pid) ->
     gen_fsm:send_all_state_event(Pid, stop).
 
-enquire_link_resp(Pid) ->
-    gen_fsm:send_sync_event(Pid, {enquire_link_resp, self()}).
+enquire_link_resp(Pid, Snum) ->
+    gen_fsm:send_sync_event(Pid, {enquire_link_resp, Snum, self()}).
 
 
 transmit_scheduled(send_enquire_link, #st_hbeat{tx=Tx, reqs=Reqs0, 
