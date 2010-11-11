@@ -93,10 +93,11 @@ enquire_link_sent(E, _F, St) ->
 
 init([Owner, Tx]) ->
 	process_flag(trap_exit, true),
-	MonitorRef = erlang:monitor(process, Owner),
+	Mref = erlang:monitor(process, Owner),
+    TxMref = erlang:monitor(process, Tx),
 
-    St0 = #st_hbeat{owner=Owner, tx=Tx, monitref=MonitorRef, reqs=[],
-                   resp_time=?RESP_INTERVAL},
+    St0 = #st_hbeat{owner=Owner, tx=Tx, tx_mref=TxMref, mref=Mref, 
+                    reqs=[],resp_time=?RESP_INTERVAL},
 
     St1 = schedule_transmit(St0),
 
@@ -110,6 +111,10 @@ handle_event(stop, _State, StData) ->
 handle_event(_E, State, StData) ->
     {next_state, State, StData}.
 
+handle_info(#'DOWN'{ref=MRef}, _StName, #st_hbeat{tx_mref=MRef}=St) ->
+    {stop, normal, St};
+handle_info(#'DOWN'{ref=MRef}, _StName, #st_hbeat{mref=MRef}=St) ->
+    {stop, normal, St};
 handle_info(_E, State, StData) ->
     {next_state, State, StData}.
 
