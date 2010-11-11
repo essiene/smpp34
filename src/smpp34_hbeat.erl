@@ -17,7 +17,7 @@
          enquire_link_sent/2,
          enquire_link_sent/3]).
 
--record(st_hbeat, {owner, tx, tx_tref, rx_tref, monitref, reqs, resp_time}).
+-record(st_hbeat, {owner, tx, tx_mref, tx_tref, rx_tref, mref, reqs, resp_time}).
 
 -define(ENQ_LNK_INTERVAL, 30000).
 -define(RESP_INTERVAL, 30000).
