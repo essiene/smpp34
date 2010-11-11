@@ -32,6 +32,18 @@ enquire_link_resp(Pid) ->
     gen_fsm:send_sync_event(Pid, {enquire_link_resp, self()}).
 
 
+transmit_scheduled(send_enquire_link, #st_hbeat{tx=Tx, reqs=Reqs0, 
+                   resp_time=RespTime}=St0) ->
+    St1 = St0#st_hbeat{tx_tref=undefined},
+
+    {ok, Snum} = smpp34_tx:send(Tx, ?ESME_ROK, #enquire_link{}),
+    T1 = erlang:now(),
+    Reqs1 = [{Snum, T1}|Reqs0],
+
+    Tref = gen_fsm:send_event_after(RespTime, {late_response, Snum}),
+
+    {next_state, enquire_link_sent, St1#st_hbeat{reqs=Reqs1, rx_tref=Tref}};
+
 transmit_scheduled(_E, St) ->
     {next_state, transmit_scheduled, St}.
 
