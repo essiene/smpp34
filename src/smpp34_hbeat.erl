@@ -44,23 +44,24 @@ transmit_scheduled(_E, St) ->
     {next_state, transmit_scheduled, St}.
 
 
-transmit_scheduled({enquire_link_resp, Snum, Owner}, #st_hbeat{owner=Owner,
+
+transmit_scheduled({enquire_link_resp, Snum, Owner}, _F, #st_hbeat{owner=Owner,
                     reqs=Reqs0, resp_time=RespTime1}=St0) ->
     T2 = erlang:now(),
     case lists:keytake(Snum, 1, Reqs0) of
         false ->
             %log response for unknown or garbage collected? request
-            {next_state, transmit_scheduled, St0};
+            {reply, ok, transmit_scheduled, St0};
         {value, {Snum, T1}, Reqs1} ->
             St1 = St0#st_hbeat{reqs=Reqs1},
 
             case timer:now_diff(T1, T2) div 1000 of %convert to milliseconds from microseconds
                 N when N < RespTime1 ->
                     %log response time for Snum
-                    {next_state, transmit_scheduled, St1};
+                    {reply, ok, transmit_scheduled, St1};
                 N ->
                     %log response time for Snum and changing resp_time to N
-                    {next_state, transmit_scheduled, St1#st_hbeat{resp_time=N}}
+                    {reply, ok, transmit_scheduled, St1#st_hbeat{resp_time=N}}
             end
     end;
 
