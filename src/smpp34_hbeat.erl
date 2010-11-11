@@ -12,6 +12,11 @@
         terminate/3,
         code_change/4]).
 
+-export([transmit_scheduled/2,
+         transmit_scheduled/3,
+         enquire_link_sent/2,
+         enquire_link_sent/3]).
+
 -record(st_hbeat, {owner, tx, tx_tref, rx_tref, monitref, reqs, resp_time}).
 
 -define(ENQ_LNK_INTERVAL, 30000).
@@ -25,6 +30,19 @@ stop(Pid) ->
 
 enquire_link_resp(Pid) ->
     gen_fsm:send_sync_event(Pid, {enquire_link_resp, self()}).
+
+
+transmit_scheduled(_E, St) ->
+    {next_state, transmit_scheduled, St}.
+
+transmit_scheduled(E, _F, St) ->
+    {reply, {error, E}, transmit_scheduled, St}.
+
+enquire_link_sent(_E, St) ->
+    {next_state, enquire_link_sent, St}.
+
+enquire_link_sent(E, _F, St) ->
+    {reply, {error, E}, enquire_link_sent, St}.
 
 
 init([Owner, Tx]) ->
