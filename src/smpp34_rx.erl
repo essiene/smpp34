@@ -67,8 +67,8 @@ handle_call({Rx, #pdu{sequence_number=Snum, body=#unbind{}}}, _F,
 					#st_rx{tx=Tx, rx=Rx}=St) ->	
     {ok, Snum} = tx_send(Tx, ?ESME_ROK, Snum, #unbind_resp{}), _F,
 	{stop, unbind, St};
-handle_call({Rx, #pdu{body=#enquire_link_resp{}}}, _F, #st_rx{rx=Rx, hb=Hb}=St) ->	
-    ok = smpp34_hbeat:enquire_link_resp(Hb),
+handle_call({Rx, #pdu{sequence_number=Snum, body=#enquire_link_resp{}}}, _F, #st_rx{rx=Rx, hb=Hb}=St) ->	
+    ok = smpp34_hbeat:enquire_link_resp(Hb, Snum),
     {reply, ok, St};
 handle_call({Rx, #pdu{body=#unbind_resp{}}}, _F, #st_rx{rx=Rx}=St) ->	
 	{stop, unbind_resp, St};
