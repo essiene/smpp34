@@ -12,7 +12,7 @@
         terminate/3,
         code_change/4]).
 
--record(st_hbeat, {owner, tx, tx_tref, rx_tref, monitref, reqs}).
+-record(st_hbeat, {owner, tx, tx_tref, rx_tref, monitref, reqs, resp_time}).
 
 -define(ENQ_LNK_INTERVAL, 30000).
 -define(RESP_INTERVAL, 30000).
@@ -33,9 +33,8 @@ init([Owner, Tx]) ->
     Tref = gen_fsm:send_event_after(?ENQ_LNK_INTERVAL, send_enquire_link),
     {ok, transmit_scheduled, 
         #st_hbeat{owner=Owner, tx=Tx, tx_tref=Tref, 
-                  monitref=MonitorRef, reqs=[]}}.
-
-
+                  monitref=MonitorRef, reqs=[], 
+                  resp_time=?RESP_INTERVAL}}.
 
 handle_sync_event(E, _F, State, StData) ->
     {reply, {error, E}, State, StData}.
