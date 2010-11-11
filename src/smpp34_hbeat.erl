@@ -12,7 +12,7 @@
         terminate/3,
         code_change/4]).
 
--record(st_hbeat, {owner, tx, tx_tref, rx_tref, monitref}).
+-record(st_hbeat, {owner, tx, tx_tref, rx_tref, monitref, reqs}).
 
 -define(ENQ_LNK_INTERVAL, 30000).
 -define(RESP_INTERVAL, 30000).
@@ -30,7 +30,7 @@ enquire_link_resp(Pid) ->
 init([Owner, Tx]) ->
 	process_flag(trap_exit, true),
 	MonitorRef = erlang:monitor(process, Owner),
-    {ok, #st_hbeat{owner=Owner, tx=Tx, monitref=MonitorRef}, 500}.
+    {ok, #st_hbeat{owner=Owner, tx=Tx, monitref=MonitorRef, reqs=[]}, 500}.
 
 
 
