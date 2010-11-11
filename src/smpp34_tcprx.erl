@@ -44,7 +44,7 @@ handle_info({tcp, Socket, Data}, #st_tcprx{socket=Socket, data=Data0, pdusink=Pd
 handle_info({tcp_closed, Socket}, #st_tcprx{socket=Socket}=St) ->
     % log tcp_closed here
 	{stop, normal, St#st_tcprx{send_unbind=false}};
-handle_info({tcp_error, Socket, Reason}, #st_tcprx{socket=Socket}=St) ->
+handle_info({tcp_error, Socket, _Reason}, #st_tcprx{socket=Socket}=St) ->
 	% Well, I don't think it makes sense to attempt to 
 	% continue when a TCP error occurs. Better bail here, so
 	% the monitoring process will also bail.
