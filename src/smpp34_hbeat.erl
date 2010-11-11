@@ -71,12 +71,9 @@ transmit_scheduled(E, _F, St) ->
     {reply, {error, E}, transmit_scheduled, St}.
 
 
-enquire_link_sent({late_response, Snum}, #st_hbeat{}) ->
+enquire_link_sent({late_response, _Snum}, St) ->
     %log this
-    St1 = St0#st_hbeat{rx_tref=undefined},
-
-    Tref = gen_fsm:send_event_after(?ENQ_LNK_INTERVAL, send_enquire_link),
-    {next_state, transmit_scheduled, St1#st_hbeat{tx_tref=Tref}};
+    {next_state, transmit_scheduled, schedule_transmit(St)};
 
 enquire_link_sent(_E, St) ->
     {next_state, enquire_link_sent, St}.
@@ -110,3 +107,11 @@ terminate(_,_,_) ->
 
 code_change(_OldVsn, State, StData, _Extra) ->
     {ok, State, StData}.
+
+
+schedule_transmit(#st_hbeat{}=St0) ->
+    St1 = St0#st_hbeat{rx_tref=undefined},
+
+    Tref = gen_fsm:send_event_after(?ENQ_LNK_INTERVAL, send_enquire_link),
+    St1#st_hbeat{tx_tref=Tref}.
+
