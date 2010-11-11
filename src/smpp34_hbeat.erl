@@ -76,6 +76,17 @@ enquire_link_sent({late_response, _Snum}, St) ->
 enquire_link_sent(_E, St) ->
     {next_state, enquire_link_sent, St}.
 
+
+
+enquire_link_sent({enquire_link_resp, Snum, Owner}, _F, #st_hbeat{owner=Owner, reqs=Reqs0}=St0) ->
+    case lists:keytake(Snum, 1, Reqs0) of
+        false ->
+            % log unknown response
+            {reply, ok, transmit_scheduled, schedule_transmit(St0)};
+        {value, {Snum, _T2}, Reqs1} ->
+            %log with response time
+            {reply, ok, transmit_scheduled, schedule_transmit(St0#st_hbeat{reqs=Reqs1})}
+    end;
 enquire_link_sent(E, _F, St) ->
     {reply, {error, E}, enquire_link_sent, St}.
 
