@@ -1,0 +1,106 @@
+Introduction
+------------
+SMPP uses the #enquire_link{} and #enquire_link_resp{} pdus to check that
+the remote node in the session is still operational.
+
+A node that wishes to verify that the remote peer is still alive sends the
+#enquire_link{} PDU. The receiving node should reply with an 
+#enquire_link_resp{} PDU to signify that it is indeed alive.
+
+Receiving
+---------
+The spec mentions that either an SMSC or and ESME can initiate an
+#enquire_link{} sequence.
+
+smpp34 always responds promptly to any received #enquire_link{} PDU by sending
+back an #enquire_link_resp{} immediately. This is handled by the smpp34_rx
+module.
+
+However some SMSCs do not bother sending #enquire_link{} PDUs to the ESMEs 
+and expect that an ESME signify that it is alive by sending an #enquire_link{} 
+PDU at regular intervals. Basically, some SMSCs expect the ESME to use the 
+#enquire_link{} PDU as a heartbeat PDU to 'keepalive' the connection.
+
+
+Sending
+-------
+The spec does not mention a particular timing or frequency requirements for
+sending the #enquire_link{} PDU or a time interval in which to expect an
+#enquire_link{} response by. Most SMSCs specify these parameters to the 
+client that will bind to the SMSC and the client is expected to comply with
+the specification. 
+
+By default, smpp34 sends an #enquire_link{} EVERY 30 secs and expects a reply 
+back in 30secs. For robustness, smpp34 does not terminate the connection if
+it doesn't get an #enquire_link_resp{} back in 30 secs. The plan is just
+log a WARNING for informational purposes only.
+
+This is handled by smpp34_hbeat
+
+smpp34_hbeat Implementation
+---------------------------
+
+smpp34_hbeat is a simple FSM with 3 states:
+
+    1. START
+    2. TRANSMIT_SCHEDULED
+    3. ENQUIRE_LINK_SENT
+
+smpp34_hbeat can do five main things:
+
+    1. Schedule Events (transmit event, late response event)
+    2. Cancel scheduled events
+    3. Transmit an #enquire_link{} PDU
+    4. Be notified of an #enquire_link_resp{} PDU 
+    5. Log
+
+When smpp34_hbeat starts, it enters the START state. In this state, all it
+does is schedule a transmit event and then transitions to the 
+TRANSMIT_SCHEDULED state. In the start state, smpp34_hbeat also initializes 
+an ETS table to keep track of enquire_link PDUs progress
+
+In the TRANSMIT_SCHEDULED state:
+    1. If a transmit event occurs. 
+        - Send an #enquire_link{} PDU via transmitter
+        - Store timestamp and sequence number of sent PDU for later tracking
+        - transition to ENQUIRE_LINK_SENT state
+    2. If a notification of an #enquire_link_resp{} PDU is received.
+        - This PDU is coming _AFTER_ the late response event for that PDU has
+          been received.
+        - Search for the sequence_number from the ETS table, calculate the time
+          difference, use this to update the response timeout spec for the next
+          time around.
+        - Log this
+        - stay on the TRANSMIT_SCHEDULED state
+
+In the ENQUIRE_LINK_SENT state:
+    1. If a notification of an #enquire_link_resp{} PDU is received.
+        - Search for the sequence_number from the ETS table, calculate the time
+          difference, use this to update the response timeout spec for the next
+          time around.
+        - Log this
+        - schedule a new Transmit event
+        - transition to the TRANSMIT_SCHEDULED state
+    2. If a late response event occurs
+        - Log this
+        - schedule a new Transmit event
+        - transition to the TRANSMIT_SCHEDULED state
+
+Garbage Collection
+------------------
+
+Since some enquire_link requests will never get responses, the ETS table will
+eventually grow and affect performance if not garbage collected. I don't have
+a satisfactory way yet to perform garbage collection and will revisit this 
+area after implementation. The two ideas are:
+
+1. fire an event periodically to garbase collect an when even occurs change
+   state to Garbage collecting, while in this state, no events are processed
+   untill garbase collection is finished and system returns to previous state.
+
+2. when event occurs, spawn new process to garbage collect in parallel. Will
+   need to read more on ETS behaviour on multiple simoultaneous access.
+
+3. The ETS should generally be kept small (say 5 to 10 outstanding requests).
+   Infact, don't even use an ETS for this. Then every operation on the 
+   structure will prune out older entries if the max length is exceeded.

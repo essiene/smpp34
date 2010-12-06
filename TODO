@@ -24,3 +24,9 @@ Other ideas worth looking into usability-wise:
 	- Behave like gen_tcp and use an {active, true|false} operational mechanism
 	- Have smpp34_esme as a simple client, exposing {active, true|false} 
       options,while then gen_esme34 as an ESME framework
+
+We need to rearchitect the ownership of the Sequence number generator. Right
+now, only the transmitter smpp34_tx calls out to smpp34_snum to get the 
+sequence_number, thus only smpp34_tx can know the sequence_number of an 
+outgoing PDU. Right now though, smpp34_tcprx needs access to smpp34_snum when
+unbinding since it will send the #unbind{} PDU directly (not via the tx).

@@ -42,17 +42,19 @@ handle_info({tcp, Socket, Data}, #st_tcprx{socket=Socket, data=Data0, pdusink=Pd
 	inet:setopts(Socket, [{active, once}]), 
 	{noreply, St#st_tcprx{data=Rest}};
 handle_info({tcp_closed, Socket}, #st_tcprx{socket=Socket}=St) ->
-	{stop, tcp_closed, St#st_tcprx{send_unbind=false}};
-handle_info({tcp_error, Socket, Reason}, #st_tcprx{socket=Socket}=St) ->
+    % log tcp_closed here
+	{stop, normal, St#st_tcprx{send_unbind=false}};
+handle_info({tcp_error, Socket, _Reason}, #st_tcprx{socket=Socket}=St) ->
 	% Well, I don't think it makes sense to attempt to 
 	% continue when a TCP error occurs. Better bail here, so
 	% the monitoring process will also bail.
 
-	{stop, {tcp_error, Reason}, St#st_tcprx{send_unbind=false}};
-handle_info(#'DOWN'{ref=Mref, reason=unbind}, #st_tcprx{mref=Mref, send_unbind=false}=St) ->
-	{stop, normal, St};
-handle_info(#'DOWN'{ref=Mref, reason=unbind_resp}, #st_tcprx{mref=Mref, send_unbind=false}=St) ->
-	{stop, normal, St};
+    %log {tcp_error, Reason} here
+	{stop, normal, St#st_tcprx{send_unbind=false}};
+handle_info(#'DOWN'{ref=Mref, reason=unbind}, #st_tcprx{mref=Mref}=St) ->
+	{stop, normal, St#st_tcprx{send_unbind=false}};
+handle_info(#'DOWN'{ref=Mref, reason=unbind_resp}, #st_tcprx{mref=Mref}=St) ->
+	{stop, normal, St#st_tcprx{send_unbind=false}};
 handle_info(#'DOWN'{ref=Mref}, #st_tcprx{mref=Mref}=St) ->
 	{stop, normal, St};
 handle_info(_Req, St) ->
