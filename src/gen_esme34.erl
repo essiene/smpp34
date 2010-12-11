@@ -104,47 +104,8 @@ init([{'__gen_esme34_mod', Mod} | InitArgs]) ->
 	% how do we monitor owner?
 
     {GenEsme34Opts, InitArgs1} = gen_esme34_options(InitArgs),
-    BindRespTimeout = proplists:get_value(bind_resp_timeout, GenEsme34Opts, 10000),
-    IgnoreVersion = proplists:get_value(ignore_version, GenEsme34Opts, false),
+    init_stage1(Mod, InitArgs1, GenEsme34Opts, #st_gensmpp34{}).
 
-    case Mod:init(InitArgs1) of
-        ignore ->
-            ignore;
-        {stop, Reason} ->
-            {stop, Reason};
-        {ok, {Host, Port, BindPdu}, ModSt} ->
-			St = #st_gensmpp34{mod=Mod, mod_st=ModSt},
-
-            case smpp34_esme_core_sup:start_child(Host, Port) of
-                {error, Reason} ->
-                    {stop, Reason};
-                {ok, Esme} -> 
-					Mref = erlang:monitor(process, Esme),
-                    St0 = St#st_gensmpp34{t1=now(), esme=Esme, esme_mref=Mref},
-
-					case smpp34_esme_core:send(Esme, BindPdu) of
-						{error, Reason} ->
-							{stop, Reason};
-						{ok, _S} ->
-							receive
-								{esme_data, Esme,
-									#pdu{command_id=?GENERIC_NACK,
-										command_status=Status}} ->
-										{stop, {generic_nack, ?SMPP_STATUS(Status)}};
-								{esme_data, Esme, 
-									#pdu{command_status=?ESME_ROK, body=RespBody}} ->
-                                        St1 = St0#st_gensmpp34{pdutx=1, pdurx=1},
-                                        process_bind_resp(St1, BindPdu, RespBody, IgnoreVersion);
-								{esme_data, Esme, 
-									#pdu{command_status=Status}} ->
-										{stop, ?SMPP_STATUS(Status)}
-							after BindRespTimeout ->
-								{stop, timeout}
-							end
-
-                    end
-            end
-    end.
 
 
 handle_call(ping, _From, #st_gensmpp34{t1=T1, pdutx=TxCount, pdurx=RxCount}=St) ->
@@ -268,24 +229,76 @@ gen_esme34_options([{bind_resp_timeout, _}=H|T], Accm, Others) ->
 gen_esme34_options([H|T], Accm, Others) ->
     gen_esme34_options(T, Accm, [H|Others]).
 
-process_bind_resp(St, #bind_receiver{}, #bind_receiver_resp{}, true) ->
+
+% Stage 1: initialize gen_smpp34 callback module
+init_stage1(Mod, Args, Opts, St0) ->
+    case Mod:init(Args) of
+        ignore ->
+            ignore;
+        {stop, Reason} ->
+            {stop, Reason};
+        {ok, {_, _, _}=ConnSpec, ModSt} ->
+			St1 = St0#st_gensmpp34{mod=Mod, mod_st=ModSt},
+            init_stage2(ConnSpec, Opts, St1)
+    end.
+
+% Stage 2: start esme_core
+init_stage2({Host, Port, _}=ConnSpec, Opts, St0) -> 
+    case smpp34_esme_core_sup:start_child(Host, Port) of 
+        {error, Reason} -> 
+            {stop, Reason}; 
+        {ok, Esme} -> 
+            Mref = erlang:monitor(process, Esme),
+            St1 = St0#st_gensmpp34{t1=now(), esme=Esme, esme_mref=Mref},
+            init_stage3(ConnSpec, Esme, Opts, St1)
+    end.
+
+% Stage 3: Send Bind PDU to endpoint
+init_stage3({_,_,BindPdu}, Esme, Opts, St) -> 
+    case smpp34_esme_core:send(Esme, BindPdu) of 
+        {error, Reason} -> 
+            {stop, Reason}; 
+        {ok, _S} -> 
+            Timeout = proplists:get_value(bind_resp_timeout, Opts, 10000), 
+
+            receive 
+                {esme_data, Esme, Pdu} ->
+                    init_stage4(Pdu, BindPdu, Opts, St)
+             after Timeout -> 
+                {stop, timeout} 
+             end
+        end.
+
+% Stage 4: Process Response Pdu Header
+init_stage4(#pdu{command_id=?GENERIC_NACK, command_status=Status}, _, _, _) ->
+    {stop, {generic_nack, ?SMPP_STATUS(Status)}};
+init_stage4(#pdu{command_status=?ESME_ROK, body=RespBody}, BindPdu, Opts, St0) -> 
+    IgnVsn= proplists:get_value(ignore_version, Opts, false),
+    St1 = St0#st_gensmpp34{pdutx=1, pdurx=1}, 
+    init_stage5(St1, BindPdu, RespBody, IgnVsn); 
+init_stage4(#pdu{command_status=Status}, _, _, _) -> 
+    {stop, ?SMPP_STATUS(Status)}.
+
+
+% Stage 5: Process Response Pdu Body
+init_stage5(St, #bind_receiver{}, #bind_receiver_resp{}, true) ->
     {ok, St};
-process_bind_resp(St, #bind_receiver{}, #bind_receiver_resp{sc_interface_version=?VERSION}, false) ->
+init_stage5(St, #bind_receiver{}, #bind_receiver_resp{sc_interface_version=?VERSION}, false) ->
     {ok, St};
-process_bind_resp(_, #bind_receiver{}, #bind_receiver_resp{sc_interface_version=Version}, false) ->
+init_stage5(_, #bind_receiver{}, #bind_receiver_resp{sc_interface_version=Version}, false) ->
     {stop, {bad_smpp_version, ?SMPP_VERSION(Version)}};
-process_bind_resp(St, #bind_transmitter{}, #bind_transmitter_resp{}, true) ->
+init_stage5(St, #bind_transmitter{}, #bind_transmitter_resp{}, true) ->
     {ok, St};
-process_bind_resp(St, #bind_transmitter{}, #bind_transmitter_resp{sc_interface_version=?VERSION}, false) ->
+init_stage5(St, #bind_transmitter{}, #bind_transmitter_resp{sc_interface_version=?VERSION}, false) ->
     {ok, St};
-process_bind_resp(_, #bind_transmitter{}, #bind_transmitter_resp{sc_interface_version=Version}, false) ->
+init_stage5(_, #bind_transmitter{}, #bind_transmitter_resp{sc_interface_version=Version}, false) ->
     {stop, {bad_smpp_version, ?SMPP_VERSION(Version)}};
-process_bind_resp(St, #bind_transceiver{}, #bind_transceiver_resp{}, true) ->
+init_stage5(St, #bind_transceiver{}, #bind_transceiver_resp{}, true) ->
     {ok, St};
-process_bind_resp(St, #bind_transceiver{}, #bind_transceiver_resp{sc_interface_version=?VERSION}, false) ->
+init_stage5(St, #bind_transceiver{}, #bind_transceiver_resp{sc_interface_version=?VERSION}, false) ->
     {ok, St};
-process_bind_resp(_, #bind_transceiver{}, #bind_transceiver_resp{sc_interface_version=Version}, false) ->
+init_stage5(_, #bind_transceiver{}, #bind_transceiver_resp{sc_interface_version=Version}, false) ->
     {stop, {bad_smpp_version, ?SMPP_VERSION(Version)}};
-process_bind_resp(_, _, Response, _) ->
+init_stage5(_, _, Response, _) ->
     {stop, {bad_bind_response, ?SMPP_PDU2CMDID(Response)}}.
 
