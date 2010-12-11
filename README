@@ -93,8 +93,8 @@ Documentation of the internals of gen_esme34 and its design decision is at
 docs/gen_esme34.txt
 
 Two example ESMEs built with gen_esme34 are available in the source:
-    - src/hello_esme.erl
-    - src/echo_esme.erl
+    - examples/hello_esme.erl
+    - examples/echo_esme.erl
 
 Status
 ======
