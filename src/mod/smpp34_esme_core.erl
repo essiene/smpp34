@@ -2,7 +2,7 @@
 -behaviour(gen_server).
 
 -include_lib("smpp34pdu/include/smpp34pdu.hrl").
--include("util.hrl").
+-include("../util.hrl").
 
 -define(SOCK_OPTS, [binary, {packet, raw}, {active, once}]).
 

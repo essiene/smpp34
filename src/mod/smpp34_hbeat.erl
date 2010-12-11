@@ -1,6 +1,6 @@
 -module(smpp34_hbeat).
 -include_lib("smpp34pdu/include/smpp34pdu.hrl").
--include("util.hrl").
+-include("../util.hrl").
 -behaviour(gen_fsm).
 
 -export([start_link/2,stop/1, enquire_link_resp/2]).

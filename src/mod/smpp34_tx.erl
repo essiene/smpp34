@@ -1,6 +1,6 @@
 -module(smpp34_tx).
 -include_lib("smpp34pdu/include/smpp34pdu.hrl").
--include("util.hrl").
+-include("../util.hrl").
 -behaviour(gen_server).
 
 -export([start_link/2, stop/1]).

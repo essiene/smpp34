@@ -1,5 +1,5 @@
 -module(smpp34_snum).
--include("util.hrl").
+-include("../util.hrl").
 -behaviour(gen_server).
 
 -export([start_link/1,start_link/2,stop/1]).
