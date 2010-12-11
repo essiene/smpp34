@@ -1,0 +1,14 @@
+Introspection and logging is a very important part of any sufficiently non
+trivial system.
+
+smpp34 can probably qualify as being sufficiently non-trivial and therefore 
+needs proper logging to expose what is going on internally.
+
+The basic idea for logging in smpp34 is to be able to see what is going on,
+if you want to.
+
+The constraints are:
+
+    1. Logging should be optional
+    2. Logging should have little impact on the system
+    3. Logging should be easy to interact with API-wise
