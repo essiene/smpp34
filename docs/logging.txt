@@ -1,3 +1,6 @@
+Introduction
+============
+
 Introspection and logging is a very important part of any sufficiently non
 trivial system.
 
@@ -12,3 +15,35 @@ The constraints are:
     1. Logging should be optional
     2. Logging should have little impact on the system
     3. Logging should be easy to interact with API-wise
+    4. No actual logging to a target medium should happen inside smpp34
+    5. smpp34 should be insulated against a crash in an external log consumer
+
+Architecture
+============
+
+So satisfy the stated constraints, the architecture is based on a gen_event
+manager supervised by a top level supervisor akin to the rest of the esme
+component modules.
+
+The log manager supervisor will be started alongside other supervisors
+when smpp34 is started.
+
+The log manager supervisor then creates a new log manager when required.
+
+The log manager is a gen_event event manager that is created and known by 
+all the components of an esme. All logging is done by calling the exported
+functions of the log manager (debug/2, info/2, warn/2, error/2). 
+
+For logging to actually happen, a consumer of the library will need to 
+register a logger to the log manager. Once registered, this logger will 
+receive tagged messages from the log manager. It is the responsibility of 
+the logger (multiple loggers can be added) to put the log messages to 
+a medium like a log file, email, etc.
+
+Insulation
+==========
+
+This architecture insulate the library from a crash in the external loggers.
+
+
+
