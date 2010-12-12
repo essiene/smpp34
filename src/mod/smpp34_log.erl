@@ -2,6 +2,7 @@
 
 -export([start_link/0, stop/1, add_logger/3]).
 -export([debug/2,info/2,error/2,warn/2]).
+-export([debug/3,info/3,error/3,warn/3]).
 
 
 
@@ -23,17 +24,30 @@ add_logger(Ref, Logger, Args) ->
             {error, {add_logger_bad_reply, Other}}
     end.
 
-debug(Ref, Term) ->
-    log(Ref, debug, Term).
+info(Ref, Format) ->
+    info(Ref, Format, []).
 
-info(Ref, Term) ->
-    log(Ref, info, Term).
+info(Ref, Format, Args) ->
+    log(Ref, 'INFO', Format, Args).
 
-error(Ref, Term) ->
-    log(Ref, error, Term).
+debug(Ref, Format) ->
+    debug(Ref, Format, []).
 
-warn(Ref, Term) ->
-    log(Ref, warn, Term).
+debug(Ref, Format, Args) ->
+    log(Ref, 'DEBUG', Format, Args).
 
-log(Ref, Tag, Term) ->
-    gen_event:notify(Ref, {Tag, Term}).
+warn(Ref, Format) ->
+    warn(Ref, Format, []).
+
+warn(Ref, Format, Args) ->
+    log(Ref, 'WARN', Format, Args).
+
+error(Ref, Format) ->
+    error(Ref, Format, []).
+
+error(Ref, Format, Args) ->
+    log(Ref, 'ERROR', Format, Args).
+
+log(Ref, Level, Format, FormatArgs) ->
+    S = io_lib:format("~s: " ++ Format, [Level|FormatArgs]),
+    gen_event:notify(Ref, {Level, S}).
