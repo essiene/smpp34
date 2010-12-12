@@ -180,8 +180,9 @@ handle_info(Info, #st_gensmpp34{mod=Mod, mod_st=ModSt}=St) ->
             {stop, Reason, St#st_gensmpp34{mod_st=ModSt1}}
     end.
 
-terminate(Reason, #st_gensmpp34{mod=Mod, mod_st=ModSt}) ->
-    Mod:terminate(Reason, ModSt).
+terminate(Reason, #st_gensmpp34{mod=Mod, mod_st=ModSt, logger=Logger}) ->
+    Mod:terminate(Reason, ModSt),
+    smpp34_log:info(Logger, "gen_esme34 has terminated with reason: ~p", [Reason]).
 
 code_change(OldVsn, #st_gensmpp34{mod=Mod, mod_st=ModSt}=St, Extra) ->
     {ok, ModSt1} = Mod:code_change(OldVsn, ModSt, Extra),
@@ -276,8 +277,8 @@ init_stage1(Mod, Args, Opts, St0) ->
     end.
 
 % Stage 2: start esme_core
-init_stage2({Host, Port, _}=ConnSpec, Opts, St0) -> 
-    case smpp34_esme_core_sup:start_child(Host, Port) of 
+init_stage2({Host, Port, _}=ConnSpec, Opts, #st_gensmpp34{logger=Logger}=St0) -> 
+    case smpp34_esme_core_sup:start_child(Host, Port, Logger) of 
         {error, Reason} -> 
             {stop, Reason}; 
         {ok, Esme} -> 
