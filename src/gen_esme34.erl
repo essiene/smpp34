@@ -233,6 +233,36 @@ gen_esme34_options([H|T], Accm, Others) ->
     gen_esme34_options(T, Accm, [H|Others]).
 
 
+% Stage 0: Create the logger
+init_stage0(Mod, Args, Opts) ->
+    case smpp34_log_sup:start_child() of
+        {error, Reason} ->
+            {stop, Reason};
+        {ok, Logger} ->
+            St = #st_gensmpp34{logger=Logger},
+
+            case proplists:get_value(logger, Opts, false) of
+                false ->
+                    init_stage1(Mod, Args, Opts, St);
+                {LogModule, LogArgs} ->
+                    case smpp34_log:add_logger(Logger, LogModule, LogArgs) of
+                        ok ->
+                            init_stage1(Mod, Args, Opts, St);
+                        {error, Reason} ->
+                            {stop, Reason}
+                    end;
+                LogModule ->
+                    case smpp34_log:add_logger(Logger, LogModule, []) of
+                        ok ->
+                            init_stage1(Mod, Args, Opts, St);
+                        {error, Reason} ->
+                            {stop, Reason}
+                    end
+            end
+    end.
+
+
+
 % Stage 1: initialize gen_smpp34 callback module
 init_stage1(Mod, Args, Opts, St0) ->
     case Mod:init(Args) of
