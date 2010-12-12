@@ -15,7 +15,8 @@
 -export([init/1, handle_call/3, handle_cast/2,
         handle_info/2, terminate/2, code_change/3]).
 
--record(st_gensmpp34, {esme, esme_mref, mod, mod_st, t1, pdutx=0, pdurx=0}).
+-record(st_gensmpp34, {esme, esme_mref, mod, mod_st, t1, pdutx=0, pdurx=0,
+                        logger}).
 
 
 behaviour_info(callbacks) ->
