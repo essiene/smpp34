@@ -17,8 +17,10 @@ add_logger(Ref, Logger, Args) ->
             ok;
         {'EXIT', Reason} ->
             {error, Reason};
+        {error, Reason} ->
+            {error, Reason}
         Other ->
-            {error, Other}
+            {error, {add_logger_bad_reply, Other}}
     end.
 
 debug(Ref, Term) ->
