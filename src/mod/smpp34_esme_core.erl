@@ -9,6 +9,7 @@
 -record(st_esmecore, {owner, mref,
 			 tx, tx_mref, 
 		     rx, rx_mref,
+             log, log_mref,
 			 params, socket}).
 
 %% ------------------------------------------------------------------
@@ -52,7 +53,8 @@ deliver(Pid, Pdu) ->
 init([Owner, Host, Port, Logger]) ->
 	process_flag(trap_exit, true),
 	Mref = erlang:monitor(process, Owner),
-	St = #st_esmecore{owner=Owner, mref=Mref},
+    LogMref = erlang:monitor(process, Logger),
+	St = #st_esmecore{owner=Owner, mref=Mref, log=Logger, log_mref=LogMref},
 	case gen_tcp:connect(Host, Port, ?SOCK_OPTS) of
 		{error, Reason} ->
 			{stop, Reason};
