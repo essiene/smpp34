@@ -55,39 +55,8 @@ init([Owner, Host, Port, Logger]) ->
 	Mref = erlang:monitor(process, Owner),
     LogMref = erlang:monitor(process, Logger),
 	St = #st_esmecore{owner=Owner, mref=Mref, log=Logger, log_mref=LogMref},
-	case gen_tcp:connect(Host, Port, ?SOCK_OPTS) of
-		{error, Reason} ->
-			{stop, Reason};
-		{ok, Socket} ->
-			St0 = St#st_esmecore{socket=Socket},
 
-			case smpp34_tx_sup:start_child(Socket) of
-				{error, Reason} ->
-					{stop, Reason};
-				{ok, Tx} ->
-					St1 = St0#st_esmecore{tx=Tx},
-
-					TxMref = erlang:monitor(process, Tx),
-					St2 = St1#st_esmecore{tx_mref=TxMref},
-
-					case smpp34_rx_sup:start_child(Tx, Socket) of
-						{error, Reason} ->
-							{stop, Reason};
-						{ok, Rx} ->
-							St3 = St2#st_esmecore{rx=Rx},
-
-							RxMref = erlang:monitor(process, Rx),
-							St4 = St3#st_esmecore{rx_mref=RxMref},
-
-							case smpp34_rx:controll_socket(Rx, Socket) of
-								{error, Reason} ->
-									{stop, Reason};
-								ok ->
-									{ok, St4#st_esmecore{params={Host, Port}}}
-							end
-					end
-			end
-	end.
+    init_stage0(Host, Port, St).
 
 
 handle_call({deliver, Rx, Pdu}, _From, #st_esmecore{rx=Rx, owner=Owner}=St) ->
@@ -110,7 +79,7 @@ handle_cast(_R, St) ->
 handle_info(#'DOWN'{ref=MRef}, #st_esmecore{mref=MRef}=St) ->
   {stop, normal, St};
 handle_info(#'DOWN'{ref=MRef, reason=R}, #st_esmecore{log_mref=MRef}=St) ->
-  {stop, {logger_died, Reason}, St};
+  {stop, {logger_died, R}, St};
 handle_info(#'DOWN'{ref=MRef, reason=R}, #st_esmecore{tx_mref=MRef, log=Log}=St) ->
   smpp34_log:warn(Log, "TX has shutdown with reason: ~p", [R]),
   {stop, normal, St};
@@ -129,3 +98,44 @@ code_change(_OldVsn, St, _Extra) ->
 %% ------------------------------------------------------------------
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
+
+% Stage 0: Make socket connection
+init_stage0(Host, Port, St0) ->
+	case gen_tcp:connect(Host, Port, ?SOCK_OPTS) of
+		{error, Reason} ->
+			{stop, Reason};
+		{ok, Socket} ->
+			St1 = St0#st_esmecore{params={Host, Port}, socket=Socket},
+            init_stage1(St1)
+    end.
+
+% Stage 1: Start TX module
+init_stage1(#st_esmecore{socket=S}=St0) -> 
+    case smpp34_tx_sup:start_child(S) of 
+        {error, Reason} -> 
+            {stop, Reason}; 
+        {ok, Tx} -> 
+            TxMref = erlang:monitor(process, Tx), 
+            St1 = St0#st_esmecore{tx=Tx, tx_mref=TxMref},
+
+            init_stage2(St1)
+    end.
+
+% Stage 2: Start RX module and handover socket control
+init_stage2(#st_esmecore{tx=Tx, socket=S}=St0) -> 
+    case smpp34_rx_sup:start_child(Tx, S) of 
+        {error, Reason} -> 
+            {stop, Reason}; 
+        {ok, Rx} -> 
+            RxMref = erlang:monitor(process, Rx), 
+            St1 = St0#st_esmecore{rx=Rx, rx_mref=RxMref}, 
+            
+            case smpp34_rx:controll_socket(Rx, S) of 
+                {error, Reason} -> 
+                    {stop, Reason}; 
+                ok -> 
+                    {ok, St1}
+            end 
+    end.
+
+
