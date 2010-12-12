@@ -109,9 +109,13 @@ handle_cast(_R, St) ->
 
 handle_info(#'DOWN'{ref=MRef}, #st_esmecore{mref=MRef}=St) ->
   {stop, normal, St};
-handle_info(#'DOWN'{ref=MRef}, #st_esmecore{tx_mref=MRef}=St) ->
+handle_info(#'DOWN'{ref=MRef, reason=R}, #st_esmecore{log_mref=MRef}=St) ->
+  {stop, {logger_died, Reason}, St};
+handle_info(#'DOWN'{ref=MRef, reason=R}, #st_esmecore{tx_mref=MRef, log=Log}=St) ->
+  smpp34_log:warn(Log, "TX has shutdown with reason: ~p", [R]),
   {stop, normal, St};
-handle_info(#'DOWN'{ref=MRef}, #st_esmecore{rx_mref=MRef}=St) ->
+handle_info(#'DOWN'{ref=MRef, reason=R}, #st_esmecore{rx_mref=MRef, log=Log}=St) ->
+  smpp34_log:warn(Log, "RX has shutdown with reason: ~p", [R]),
   {stop, normal, St};
 handle_info(_Info, St) ->
   {noreply, St}.
