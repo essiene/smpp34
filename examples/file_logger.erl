@@ -11,8 +11,12 @@ init([FileName]) ->
     {ok, IoDevice} = file:open(FileName, [append]),
     {ok, #st_flogger{filename=FileName, io_device=IoDevice}}.
 
-handle_event({Level, Log}, #st_flogger{io_device=IoDev}=St) ->
-    io:format(IoDev, "~p: ~s~n", [Level, Log]),
+handle_event({'ERROR', Log}, #st_flogger{io_device=IoDev}=St) ->
+    error_logger:error_msg("~s~n", [Log]),
+    io:format(IoDev, "~s~n", [Log]),
+    {ok, St};
+handle_event({_, Log}, #st_flogger{io_device=IoDev}=St) ->
+    io:format(IoDev, "~s~n", [Log]),
     {ok, St};
 handle_event(_, St) ->
     {ok, St}.
