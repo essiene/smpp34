@@ -335,3 +335,7 @@ init_stage5(_, #bind_transceiver{}, #bind_transceiver_resp{sc_interface_version=
 init_stage5(_, _, Response, _) ->
     {stop, {bad_bind_response, ?SMPP_PDU2CMDID(Response)}}.
 
+% Stage 6: Any common success actions. currently, just logging
+init_stage6(#st_gensmpp34{logger=Logger}=St) ->
+    smpp34_log:info(Logger, "ESME successfully started"),
+    {ok, St}.
