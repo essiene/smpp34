@@ -227,6 +227,8 @@ gen_esme34_options([ignore_version=H|T], Accm, Others) ->
     gen_esme34_options(T, [H|Accm], Others);
 gen_esme34_options([{bind_resp_timeout, _}=H|T], Accm, Others) ->
     gen_esme34_options(T, [H|Accm], Others);
+gen_esme34_options([{logger, _}=H|T], Accm, Others) ->
+    gen_esme34_options(T, [H|Accm], Others);
 gen_esme34_options([H|T], Accm, Others) ->
     gen_esme34_options(T, Accm, [H|Others]).
 
