@@ -315,21 +315,21 @@ init_stage4(#pdu{command_status=Status}, _, _, _) ->
 
 % Stage 5: Process Response Pdu Body
 init_stage5(St, #bind_receiver{}, #bind_receiver_resp{}, true) ->
-    {ok, St};
+    init_stage6(St);
 init_stage5(St, #bind_receiver{}, #bind_receiver_resp{sc_interface_version=?VERSION}, false) ->
-    {ok, St};
+    init_stage6(St);
 init_stage5(_, #bind_receiver{}, #bind_receiver_resp{sc_interface_version=Version}, false) ->
     {stop, {bad_smpp_version, ?SMPP_VERSION(Version)}};
 init_stage5(St, #bind_transmitter{}, #bind_transmitter_resp{}, true) ->
-    {ok, St};
+    init_stage6(St);
 init_stage5(St, #bind_transmitter{}, #bind_transmitter_resp{sc_interface_version=?VERSION}, false) ->
-    {ok, St};
+    init_stage6(St);
 init_stage5(_, #bind_transmitter{}, #bind_transmitter_resp{sc_interface_version=Version}, false) ->
     {stop, {bad_smpp_version, ?SMPP_VERSION(Version)}};
 init_stage5(St, #bind_transceiver{}, #bind_transceiver_resp{}, true) ->
-    {ok, St};
+    init_stage6(St);
 init_stage5(St, #bind_transceiver{}, #bind_transceiver_resp{sc_interface_version=?VERSION}, false) ->
-    {ok, St};
+    init_stage6(St);
 init_stage5(_, #bind_transceiver{}, #bind_transceiver_resp{sc_interface_version=Version}, false) ->
     {stop, {bad_smpp_version, ?SMPP_VERSION(Version)}};
 init_stage5(_, _, Response, _) ->
