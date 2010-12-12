@@ -11,11 +11,17 @@
 
 start() ->
 	smpp34:start(),
-    gen_esme34:start({local, ?MODULE}, ?MODULE, ["localhost", 10000, "mmayen", "mmayen"], [{ignore_version, true}]).
+    gen_esme34:start({local, ?MODULE}, ?MODULE, 
+        ["localhost", 10000, "mmayen", "mmayen"], 
+        [{ignore_version, true},
+         {logger, {file_logger, ['echo_esme.log']}}]).
 
 start(Host, Port, IgnoreVersion) ->
 	smpp34:start(),
-    gen_esme34:start({local, ?MODULE}, ?MODULE, [Host, Port, "mmayen", "mmayen"], [{ignore_version, IgnoreVersion}]).
+    gen_esme34:start({local, ?MODULE}, ?MODULE, 
+        [Host, Port, "mmayen", "mmayen"], 
+        [{ignore_version, IgnoreVersion},
+         {logger, {file_logger, ['echo_esme.log']}}]).
 
 stop() ->
     gen_esme34:cast(?MODULE, stop).
