@@ -24,16 +24,16 @@ add_logger(Ref, Logger, Args) ->
     end.
 
 debug(Ref, Term) ->
-    log(Ref, esme_log_debug, Term).
+    log(Ref, debug, Term).
 
 info(Ref, Term) ->
-    log(Ref, esme_log_info, Term).
+    log(Ref, info, Term).
 
 error(Ref, Term) ->
-    log(Ref, esme_log_error, Term).
+    log(Ref, error, Term).
 
 warn(Ref, Term) ->
-    log(Ref, esme_log_warn, Term).
+    log(Ref, warn, Term).
 
 log(Ref, Tag, Term) ->
     gen_event:notify(Ref, {Tag, Term}).
