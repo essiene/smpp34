@@ -105,7 +105,7 @@ init([{'__gen_esme34_mod', Mod} | InitArgs]) ->
 	% how do we monitor owner?
 
     {GenEsme34Opts, InitArgs1} = gen_esme34_options(InitArgs),
-    init_stage1(Mod, InitArgs1, GenEsme34Opts, #st_gensmpp34{}).
+    init_stage0(Mod, InitArgs1, GenEsme34Opts).
 
 
 
