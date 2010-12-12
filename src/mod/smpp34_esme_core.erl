@@ -15,7 +15,7 @@
 %% API Function Exports
 %% ------------------------------------------------------------------
 
--export([start_link/3, stop/1, send/2, send/3, send/4, deliver/2]).
+-export([start_link/4, stop/1, send/2, send/3, send/4, deliver/2]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
@@ -27,8 +27,8 @@
 %% API Function Definitions
 %% ------------------------------------------------------------------
 
-start_link(Owner, Host, Port) ->
-  gen_server:start_link(?MODULE, [Owner, Host, Port], []).
+start_link(Owner, Host, Port, Logger) ->
+  gen_server:start_link(?MODULE, [Owner, Host, Port, Logger], []).
 
 stop(Pid) ->
 	gen_server:call(Pid, stop).
@@ -49,7 +49,7 @@ deliver(Pid, Pdu) ->
 %% gen_server Function Definitions
 %% ------------------------------------------------------------------
 
-init([Owner, Host, Port]) ->
+init([Owner, Host, Port, Logger]) ->
 	process_flag(trap_exit, true),
 	Mref = erlang:monitor(process, Owner),
 	St = #st_esmecore{owner=Owner, mref=Mref},
