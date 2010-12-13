@@ -48,6 +48,8 @@ error(Ref, Format) ->
 error(Ref, Format, Args) ->
     log(Ref, 'ERROR', Format, Args).
 
+log(Ref, Level, S, []) ->
+    gen_event:notify(Ref, {Level, S});
 log(Ref, Level, Format, FormatArgs) ->
-    S = io_lib:format("~s: " ++ Format, [Level|FormatArgs]),
+    S = io_lib:format(Format, FormatArgs),
     gen_event:notify(Ref, {Level, S}).
