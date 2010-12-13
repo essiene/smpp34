@@ -40,12 +40,12 @@ init([Owner, Tx, Socket, Logger]) ->
 	process_flag(trap_exit, true),
 	MRef = erlang:monitor(process, Owner),
 	TxMref = erlang:monitor(process, Tx),
-	case smpp34_tcprx_sup:start_child(Socket) of
+	case smpp34_tcprx_sup:start_child(Socket, Logger) of
 		{error, Reason} ->
 			{stop, Reason};
 		{ok, Rx} ->
 			RxMref = erlang:monitor(process, Rx),
-            case smpp34_hbeat_sup:start_child(Tx) of
+            case smpp34_hbeat_sup:start_child(Tx, Logger) of
                 {error, Reason} ->
                     {stop, Reason};
                 {ok, Hb} ->

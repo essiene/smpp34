@@ -3,7 +3,7 @@
 -include("../util.hrl").
 -behaviour(gen_server).
 
--export([start_link/3, stop/1]).
+-export([start_link/4, stop/1]).
 
 -export([init/1,
         handle_call/3,
@@ -13,19 +13,19 @@
         code_change/3]).
 
 
--record(st_tcprx, {owner,mref,socket,pdusink,data, send_unbind=true}).
+-record(st_tcprx, {owner,mref,socket,pdusink,data, send_unbind=true, log}).
 
-start_link(Owner, Socket, PduSink) ->
-    gen_server:start_link(?MODULE, [Owner, Socket, PduSink], []).
+start_link(Owner, Socket, PduSink, Logger) ->
+    gen_server:start_link(?MODULE, [Owner, Socket, PduSink, Logger], []).
 
 stop(Pid) ->
     gen_server:cast(Pid, stop).
 
-init([Owner, Socket, PduSink]) ->
+init([Owner, Socket, PduSink, Logger]) ->
 	process_flag(trap_exit, true),
 	Mref = erlang:monitor(process, Owner),
     {ok, #st_tcprx{owner=Owner, mref=Mref, socket=Socket,
-				   pdusink=PduSink, data = <<>>}}.
+				   pdusink=PduSink, data = <<>>, log=Logger}}.
 
 handle_call(Req, _From, St) ->
     {reply, {error, Req}, St}.

@@ -3,7 +3,7 @@
 -include("../util.hrl").
 -behaviour(gen_fsm).
 
--export([start_link/2,stop/1, enquire_link_resp/2]).
+-export([start_link/3,stop/1, enquire_link_resp/2]).
 
 -export([init/1,
         handle_sync_event/4,
@@ -17,13 +17,14 @@
          enquire_link_sent/2,
          enquire_link_sent/3]).
 
--record(st_hbeat, {owner, tx, tx_mref, tx_tref, rx_tref, mref, reqs, resp_time}).
+-record(st_hbeat, {owner, tx, tx_mref, tx_tref, rx_tref, mref, reqs, resp_time,
+                   log}).
 
 -define(ENQ_LNK_INTERVAL, 30000).
 -define(RESP_INTERVAL, 30000).
 
-start_link(Owner, Tx) ->
-    gen_fsm:start_link(?MODULE, [Owner, Tx], []).
+start_link(Owner, Tx, Logger) ->
+    gen_fsm:start_link(?MODULE, [Owner, Tx, Logger], []).
 
 stop(Pid) ->
     gen_fsm:send_all_state_event(Pid, stop).
@@ -91,13 +92,13 @@ enquire_link_sent(E, _F, St) ->
     {reply, {error, E}, enquire_link_sent, St}.
 
 
-init([Owner, Tx]) ->
+init([Owner, Tx, Logger]) ->
 	process_flag(trap_exit, true),
 	Mref = erlang:monitor(process, Owner),
     TxMref = erlang:monitor(process, Tx),
 
     St0 = #st_hbeat{owner=Owner, tx=Tx, tx_mref=TxMref, mref=Mref, 
-                    reqs=[],resp_time=?RESP_INTERVAL},
+                    reqs=[],resp_time=?RESP_INTERVAL, log=Logger},
 
     St1 = schedule_transmit(St0),
 
