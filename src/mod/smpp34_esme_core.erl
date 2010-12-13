@@ -81,10 +81,10 @@ handle_info(#'DOWN'{ref=MRef}, #st_esmecore{mref=MRef}=St) ->
 handle_info(#'DOWN'{ref=MRef, reason=R}, #st_esmecore{log_mref=MRef}=St) ->
   {stop, {logger_died, R}, St};
 handle_info(#'DOWN'{ref=MRef, reason=R}, #st_esmecore{tx_mref=MRef, log=Log}=St) ->
-  smpp34_log:warn(Log, "TX has shutdown with reason: ~p", [R]),
+  smpp34_log:warn(Log, "esme_core: tx is down: ~p", [R]),
   {stop, normal, St};
 handle_info(#'DOWN'{ref=MRef, reason=R}, #st_esmecore{rx_mref=MRef, log=Log}=St) ->
-  smpp34_log:warn(Log, "RX has shutdown with reason: ~p", [R]),
+  smpp34_log:warn(Log, "esme_core: rx is down: ~p", [R]),
   {stop, normal, St};
 handle_info(_Info, St) ->
   {noreply, St}.
@@ -110,8 +110,8 @@ init_stage0(Host, Port, St0) ->
     end.
 
 % Stage 1: Start TX module
-init_stage1(#st_esmecore{socket=S}=St0) -> 
-    case smpp34_tx_sup:start_child(S) of 
+init_stage1(#st_esmecore{socket=S, log=Logger}=St0) -> 
+    case smpp34_tx_sup:start_child(S, Logger) of 
         {error, Reason} -> 
             {stop, Reason}; 
         {ok, Tx} -> 
@@ -122,8 +122,8 @@ init_stage1(#st_esmecore{socket=S}=St0) ->
     end.
 
 % Stage 2: Start RX module and handover socket control
-init_stage2(#st_esmecore{tx=Tx, socket=S}=St0) -> 
-    case smpp34_rx_sup:start_child(Tx, S) of 
+init_stage2(#st_esmecore{tx=Tx, socket=S, log=Logger}=St0) -> 
+    case smpp34_rx_sup:start_child(Tx, S, Logger) of 
         {error, Reason} -> 
             {stop, Reason}; 
         {ok, Rx} -> 
