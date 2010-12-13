@@ -28,25 +28,25 @@ info(Ref, Format) ->
     info(Ref, Format, []).
 
 info(Ref, Format, Args) ->
-    log(Ref, 'INFO', Format, Args).
+    log(Ref, info, Format, Args).
 
 debug(Ref, Format) ->
     debug(Ref, Format, []).
 
 debug(Ref, Format, Args) ->
-    log(Ref, 'DEBUG', Format, Args).
+    log(Ref, debug, Format, Args).
 
 warn(Ref, Format) ->
     warn(Ref, Format, []).
 
 warn(Ref, Format, Args) ->
-    log(Ref, 'WARN', Format, Args).
+    log(Ref, warn, Format, Args).
 
 error(Ref, Format) ->
     error(Ref, Format, []).
 
 error(Ref, Format, Args) ->
-    log(Ref, 'ERROR', Format, Args).
+    log(Ref, error, Format, Args).
 
 log(Ref, Level, S, []) ->
     gen_event:notify(Ref, {Level, S});
