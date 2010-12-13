@@ -2,7 +2,7 @@
 -include("../util.hrl").
 -behaviour(gen_server).
 
--export([start_link/1,start_link/2,stop/1]).
+-export([start_link/2,start_link/3,stop/1]).
 -export([next/1, ping/1]).
 
 -export([init/1,
@@ -12,13 +12,13 @@
         terminate/2,
         code_change/3]).
 
--record(st_snum, {owner, count, monitref}).
+-record(st_snum, {owner, count, monitref, log}).
 
-start_link(Owner) ->
-	start_link(Owner, 0).
+start_link(Owner, Logger) ->
+	start_link(Owner, 0, Logger).
 
-start_link(Owner, Start) ->
-    gen_server:start_link(?MODULE, [Owner, Start], []).
+start_link(Owner, Start, Logger) ->
+    gen_server:start_link(?MODULE, [Owner, Start, Logger], []).
 
 stop(Pid) ->
     gen_server:cast(Pid, stop).
@@ -30,10 +30,10 @@ ping(Pid) ->
 	gen_server:call(Pid, ping).
 
 
-init([Owner, Start]) ->
+init([Owner, Start, Logger]) ->
 	process_flag(trap_exit, true),
 	MonitorRef = erlang:monitor(process, Owner),
-    {ok, #st_snum{owner=Owner, count=Start, monitref=MonitorRef}}.
+    {ok, #st_snum{owner=Owner, count=Start, monitref=MonitorRef, log=Logger}}.
 
 handle_call(ping, _From, #st_snum{owner=Owner, count=Count}=St) ->
 	{reply, {pong, [{owner=Owner}, {count,Count}]}, St};
