@@ -68,7 +68,8 @@ handle_cast(_Req, St) ->
 
 handle_info(#'DOWN'{ref=MonitorRef}, #st_tx{monitref=MonitorRef}=St) ->
 	{stop, normal, St};
-handle_info(#'DOWN'{ref=SnumMonitRef}, #st_tx{snum_monitref=SnumMonitRef}=St) ->
+handle_info(#'DOWN'{ref=SnumMonitRef, reason=R}, #st_tx{snum_monitref=SnumMonitRef, log=Log}=St) ->
+    smpp34_log:warn(Log, "tx: snum is down: ~p", [R]),
 	{stop, normal, St};
 handle_info(_Req, St) ->
 	{noreply, St}.
