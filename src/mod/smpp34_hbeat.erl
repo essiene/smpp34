@@ -33,12 +33,12 @@ enquire_link_resp(Pid, Snum) ->
     gen_fsm:sync_send_event(Pid, {enquire_link_resp, Snum, self()}).
 
 
-transmit_scheduled(send_enquire_link, St0) ->
+transmit_scheduled(send_enquire_link, #st_hbeat{log=Log}=St0) ->
 
     {St1, Snum} = transmit_enquire_link(St0),
     St2 = schedule_late_response(St1, Snum),
 
-
+    smpp34_log:debug(Log, "hbeat: EnquireLink/~p sent", [Snum]),
     {next_state, enquire_link_sent, St2};
 
 transmit_scheduled(_E, St) ->
@@ -47,21 +47,23 @@ transmit_scheduled(_E, St) ->
 
 
 transmit_scheduled({enquire_link_resp, Snum, Owner}, _F, #st_hbeat{owner=Owner,
-                    reqs=Reqs0, resp_time=RespTime1}=St0) ->
+                    reqs=Reqs0, resp_time=RespTime1, log=Log}=St0) ->
     T2 = erlang:now(),
     case lists:keytake(Snum, 1, Reqs0) of
         false ->
-            %log response for unknown or garbage collected? request
+            smpp34_log:warn(Log, "hbeat: Unknown EnquireLinkResp/~p received", [Snum]),
             {reply, ok, transmit_scheduled, St0};
         {value, {Snum, T1}, Reqs1} ->
             St1 = St0#st_hbeat{reqs=Reqs1},
 
-            case timer:now_diff(T1, T2) div 1000 of %convert to milliseconds from microseconds
+            case timer:now_diff(T2, T1) div 1000 of %convert to milliseconds from microseconds
                 N when N < RespTime1 ->
-                    %log response time for Snum
+                    smpp34_log:debug(Log, "hbeat: EnquireLinkResp/~p received in ~pms", [Snum, N]),
                     {reply, ok, transmit_scheduled, St1};
                 N ->
                     %log response time for Snum and changing resp_time to N
+                    smpp34_log:warn(Log, "hbeat: EnquireLinkResp/~p received in ~pms expected in ~pms", [Snum, N, RespTime1]),
+                    smpp34_log:warn(Log, "hbeat: Now changing expected response time to ~pms", [N]),
                     {reply, ok, transmit_scheduled, St1#st_hbeat{resp_time=N}}
             end
     end;
@@ -70,8 +72,8 @@ transmit_scheduled(E, _F, St) ->
     {reply, {error, E}, transmit_scheduled, St}.
 
 
-enquire_link_sent({late_response, _Snum}, St) ->
-    %log this
+enquire_link_sent({late_response, Snum}, #st_hbeat{log=Log}=St) ->
+    smpp34_log:warn(Log, "hbeat: EnquireLinkResp/~p is late", [Snum]),
     {next_state, transmit_scheduled, schedule_transmit(St)};
 
 enquire_link_sent(_E, St) ->
@@ -79,13 +81,15 @@ enquire_link_sent(_E, St) ->
 
 
 
-enquire_link_sent({enquire_link_resp, Snum, Owner}, _F, #st_hbeat{owner=Owner, reqs=Reqs0}=St0) ->
+enquire_link_sent({enquire_link_resp, Snum, Owner}, _F, #st_hbeat{owner=Owner, reqs=Reqs0, log=Log}=St0) ->
+    T2 = erlang:now(),
     case lists:keytake(Snum, 1, Reqs0) of
         false ->
-            % log unknown response
+            smpp34_log:warn(Log, "hbeat: Unknown EnquireLinkResp/~p received", [Snum]),
             {reply, ok, transmit_scheduled, schedule_transmit(St0)};
-        {value, {Snum, _T2}, Reqs1} ->
-            %log with response time
+        {value, {Snum, T1}, Reqs1} ->
+            N = timer:now_diff(T2, T1) div 1000, %convert to milliseconds from microseconds
+            smpp34_log:debug(Log, "hbeat: EnquireLinkResp/~p received in ~pms", [Snum, N]),
             {reply, ok, transmit_scheduled, schedule_transmit(St0#st_hbeat{reqs=Reqs1})}
     end;
 enquire_link_sent(E, _F, St) ->
