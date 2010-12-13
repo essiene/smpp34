@@ -3,7 +3,7 @@
 -include("../util.hrl").
 -behaviour(gen_server).
 
--export([start_link/3,stop/1]).
+-export([start_link/4,stop/1]).
 -export([ping/1, deliver/2, controll_socket/2]).
 
 -export([init/1,
@@ -13,10 +13,10 @@
         terminate/2,
         code_change/3]).
 
--record(st_rx, {owner, mref, tx, tx_mref, rx, rx_mref, hb, hb_mref}).
+-record(st_rx, {owner, mref, tx, tx_mref, rx, rx_mref, hb, hb_mref, log}).
 
-start_link(Owner, Tx, Socket) ->
-    gen_server:start_link(?MODULE, [Owner, Tx, Socket], []).
+start_link(Owner, Tx, Socket, Logger) ->
+    gen_server:start_link(?MODULE, [Owner, Tx, Socket, Logger], []).
 
 stop(Pid) ->
     gen_server:cast(Pid, stop).
@@ -36,7 +36,7 @@ deliver(Pid, [Head|Rest]) ->
 deliver(Pid, Pdu) ->
 	gen_server:call(Pid, {self(), Pdu}).
 
-init([Owner, Tx, Socket]) ->
+init([Owner, Tx, Socket, Logger]) ->
 	process_flag(trap_exit, true),
 	MRef = erlang:monitor(process, Owner),
 	TxMref = erlang:monitor(process, Tx),
@@ -54,7 +54,8 @@ init([Owner, Tx, Socket]) ->
                         #st_rx{owner=Owner, mref=MRef, 
                                tx=Tx, tx_mref=TxMref,
                                rx=Rx, rx_mref=RxMref,
-                               hb=Hb, hb_mref=HbMref}}
+                               hb=Hb, hb_mref=HbMref,
+                               log=Logger}}
              end
 	end.
 
