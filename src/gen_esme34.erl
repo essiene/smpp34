@@ -110,7 +110,8 @@ init([{'__gen_esme34_mod', Mod} | InitArgs]) ->
 
 
 handle_call(ping, _From, #st_gensmpp34{t1=T1, pdutx=TxCount, pdurx=RxCount}=St) ->
-    Uptime = timer:now_diff(now(), T1) div 1000000,
+    UptimeS = timer:now_diff(now(), T1) div 1000000,
+    Uptime = calendar:seconds_to_daystime(UptimeS),
     {reply, {pong, [{uptime, Uptime}, {txpdu, TxCount}, {rxpdu, RxCount}]}, St};
 
 handle_call(Request, From, #st_gensmpp34{mod=Mod, mod_st=ModSt}=St) ->
