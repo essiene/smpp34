@@ -36,7 +36,7 @@ ping(Pid) ->
 init([Owner, Socket, Logger]) ->
 	process_flag(trap_exit, true),
 	MonitorRef = erlang:monitor(process, Owner),
-	case smpp34_snum_sup:start_child() of
+	case smpp34_snum_sup:start_child(Logger) of
 		{error, Reason} ->
 			{stop, Reason};
 		{ok, Snum} ->
