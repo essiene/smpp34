@@ -166,7 +166,8 @@ handle_info({esme_data, Esme, Pdu}, #st_gensmpp34{mod=Mod, mod_st=ModSt, esme=Es
         {stop, Reason, ModSt1} ->
             {stop, Reason, St#st_gensmpp34{mod_st=ModSt1}}
     end;
-handle_info(#'DOWN'{ref=Mref}, #st_gensmpp34{esme_mref=Mref}=St) ->
+handle_info(#'DOWN'{ref=Mref, reason=R}, #st_gensmpp34{esme_mref=Mref, logger=Logger}=St) ->
+    smpp34_log:warn(Logger, "gen_esme34: esme_core is down: ~p", [R]),
 	{stop, normal, St};
 handle_info(Info, #st_gensmpp34{mod=Mod, mod_st=ModSt}=St) ->
     case Mod:handle_info(Info, ModSt) of
@@ -182,7 +183,7 @@ handle_info(Info, #st_gensmpp34{mod=Mod, mod_st=ModSt}=St) ->
 
 terminate(Reason, #st_gensmpp34{mod=Mod, mod_st=ModSt, logger=Logger}) ->
     Mod:terminate(Reason, ModSt),
-    smpp34_log:info(Logger, "gen_esme34 has terminated with reason: ~p", [Reason]).
+    smpp34_log:info(Logger, "gen_esme34: Terminating with reason: ~p", [Reason]).
 
 code_change(OldVsn, #st_gensmpp34{mod=Mod, mod_st=ModSt}=St, Extra) ->
     {ok, ModSt1} = Mod:code_change(OldVsn, ModSt, Extra),
@@ -265,11 +266,12 @@ init_stage0(Mod, Args, Opts) ->
 
 
 % Stage 1: initialize gen_smpp34 callback module
-init_stage1(Mod, Args, Opts, St0) ->
+init_stage1(Mod, Args, Opts, #st_gensmpp34{logger=Logger}=St0) ->
     case Mod:init(Args) of
         ignore ->
             ignore;
         {stop, Reason} ->
+            smpp34_log:error(Logger, "gen_esme34: ~p while initializing callback module", [Reason]),
             {stop, Reason};
         {ok, {_, _, _}=ConnSpec, ModSt} ->
 			St1 = St0#st_gensmpp34{mod=Mod, mod_st=ModSt},
@@ -280,6 +282,7 @@ init_stage1(Mod, Args, Opts, St0) ->
 init_stage2({Host, Port, _}=ConnSpec, Opts, #st_gensmpp34{logger=Logger}=St0) -> 
     case smpp34_esme_core_sup:start_child(Host, Port, Logger) of 
         {error, Reason} -> 
+            smpp34_log:error(Logger, "gen_esme34: ~p while starting esme_core", [Reason]),
             {stop, Reason}; 
         {ok, Esme} -> 
             Mref = erlang:monitor(process, Esme),
@@ -288,9 +291,10 @@ init_stage2({Host, Port, _}=ConnSpec, Opts, #st_gensmpp34{logger=Logger}=St0) ->
     end.
 
 % Stage 3: Send Bind PDU to endpoint
-init_stage3({_,_,BindPdu}, Esme, Opts, St) -> 
+init_stage3({_,_,BindPdu}, Esme, Opts, #st_gensmpp34{logger=Logger}=St) -> 
     case smpp34_esme_core:send(Esme, BindPdu) of 
         {error, Reason} -> 
+            smpp34_log:error(Logger, "gen_esme34: ~p while sending Bind PDU", [Reason]),
             {stop, Reason}; 
         {ok, _S} -> 
             Timeout = proplists:get_value(bind_resp_timeout, Opts, 10000), 
@@ -299,6 +303,7 @@ init_stage3({_,_,BindPdu}, Esme, Opts, St) ->
                 {esme_data, Esme, Pdu} ->
                     init_stage4(Pdu, BindPdu, Opts, St)
              after Timeout -> 
+                smpp34_log:error(Logger, "gen_esme34: Timeout (~pms) while sending Bind PDU", [Timeout]),
                 {stop, timeout} 
              end
         end.
@@ -319,24 +324,31 @@ init_stage5(St, #bind_receiver{}, #bind_receiver_resp{}, true) ->
     init_stage6(St);
 init_stage5(St, #bind_receiver{}, #bind_receiver_resp{sc_interface_version=?VERSION}, false) ->
     init_stage6(St);
-init_stage5(_, #bind_receiver{}, #bind_receiver_resp{sc_interface_version=Version}, false) ->
-    {stop, {bad_smpp_version, ?SMPP_VERSION(Version)}};
+init_stage5(St, #bind_receiver{}, #bind_receiver_resp{sc_interface_version=Version}, false) ->
+    init_bad_version(St, Version);
 init_stage5(St, #bind_transmitter{}, #bind_transmitter_resp{}, true) ->
     init_stage6(St);
 init_stage5(St, #bind_transmitter{}, #bind_transmitter_resp{sc_interface_version=?VERSION}, false) ->
     init_stage6(St);
-init_stage5(_, #bind_transmitter{}, #bind_transmitter_resp{sc_interface_version=Version}, false) ->
-    {stop, {bad_smpp_version, ?SMPP_VERSION(Version)}};
+init_stage5(St, #bind_transmitter{}, #bind_transmitter_resp{sc_interface_version=Version}, false) ->
+    init_bad_version(St, Version);
 init_stage5(St, #bind_transceiver{}, #bind_transceiver_resp{}, true) ->
     init_stage6(St);
 init_stage5(St, #bind_transceiver{}, #bind_transceiver_resp{sc_interface_version=?VERSION}, false) ->
     init_stage6(St);
-init_stage5(_, #bind_transceiver{}, #bind_transceiver_resp{sc_interface_version=Version}, false) ->
-    {stop, {bad_smpp_version, ?SMPP_VERSION(Version)}};
-init_stage5(_, _, Response, _) ->
+init_stage5(St, #bind_transceiver{}, #bind_transceiver_resp{sc_interface_version=Version}, false) ->
+    init_bad_version(St, Version);
+init_stage5(#st_gensmpp34{logger=Logger}, _, Response, _) ->
+    smpp34_log:error(Logger, "gen_esme34: SMSC returned wrong response PDU - ~p", [?SMPP_PDU2CMDID(Response)]),
     {stop, {bad_bind_response, ?SMPP_PDU2CMDID(Response)}}.
 
 % Stage 6: Any common success actions. currently, just logging
 init_stage6(#st_gensmpp34{logger=Logger}=St) ->
-    smpp34_log:info(Logger, "ESME successfully started"),
+    smpp34_log:info(Logger, "gen_esme34: Started ok"),
     {ok, St}.
+
+init_bad_version(#st_gensmpp34{logger=Logger}, Version) ->
+    V = ?SMPP_VERSION(Version),
+    smpp34_log:error(Logger, "gen_esme34: SMSC returned bad SMPP version - ~p", [V]),
+    {stop, {bad_smpp_version, V}}.
+
