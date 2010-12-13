@@ -3,7 +3,7 @@
 -include("../util.hrl").
 -behaviour(gen_server).
 
--export([start_link/2, stop/1]).
+-export([start_link/3, stop/1]).
 -export([send/3, send/4, ping/1]).
 
 -export([init/1,
@@ -14,10 +14,10 @@
         code_change/3]).
 
 
--record(st_tx, {owner,monitref,socket,snum, snum_monitref}).
+-record(st_tx, {owner,monitref,socket,snum, snum_monitref, log}).
 
-start_link(Owner, Socket) ->
-    gen_server:start_link(?MODULE, [Owner, Socket], []).
+start_link(Owner, Socket, Logger) ->
+    gen_server:start_link(?MODULE, [Owner, Socket, Logger], []).
 
 stop(Pid) ->
     gen_server:cast(Pid, stop).
@@ -33,7 +33,7 @@ ping(Pid) ->
 
 
 
-init([Owner, Socket]) ->
+init([Owner, Socket, Logger]) ->
 	process_flag(trap_exit, true),
 	MonitorRef = erlang:monitor(process, Owner),
 	case smpp34_snum_sup:start_child() of
@@ -42,7 +42,8 @@ init([Owner, Socket]) ->
 		{ok, Snum} ->
 			SnumMonitRef = erlang:monitor(process, Snum),
 			{ok, #st_tx{owner=Owner, monitref=MonitorRef, socket=Socket,
-						   snum=Snum, snum_monitref=SnumMonitRef}}
+						   snum=Snum, snum_monitref=SnumMonitRef,
+                           log=Logger}}
 	end.
 
 handle_call(ping, _From, #st_tx{owner=Owner, socket=Socket, snum=Snum}=St) ->
