@@ -41,15 +41,11 @@ handle_info({tcp, Socket, Data}, #st_tcprx{socket=Socket, data=Data0, pdusink=Pd
 	smpp34_rx:deliver(PduSink, PduList), 
 	inet:setopts(Socket, [{active, once}]), 
 	{noreply, St#st_tcprx{data=Rest}};
-handle_info({tcp_closed, Socket}, #st_tcprx{socket=Socket}=St) ->
-    % log tcp_closed here
+handle_info({tcp_closed, Socket}, #st_tcprx{socket=Socket, log=Log}=St) ->
+    smpp34_log:error(Log, "tcprx: Socket closed by peer"),
 	{stop, normal, St#st_tcprx{send_unbind=false}};
-handle_info({tcp_error, Socket, _Reason}, #st_tcprx{socket=Socket}=St) ->
-	% Well, I don't think it makes sense to attempt to 
-	% continue when a TCP error occurs. Better bail here, so
-	% the monitoring process will also bail.
-
-    %log {tcp_error, Reason} here
+handle_info({tcp_error, Socket, Reason}, #st_tcprx{socket=Socket, log=Log}=St) ->
+    smpp34_log:error(Log, "tcprx: TCP error - ~w", [Reason]),
 	{stop, normal, St#st_tcprx{send_unbind=false}};
 handle_info(#'DOWN'{ref=Mref, reason=unbind}, #st_tcprx{mref=Mref}=St) ->
 	{stop, normal, St#st_tcprx{send_unbind=false}};
