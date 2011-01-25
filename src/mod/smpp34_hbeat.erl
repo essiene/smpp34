@@ -130,11 +130,12 @@ code_change(_OldVsn, State, StData, _Extra) ->
     {ok, State, StData}.
 
 
-schedule_transmit(#st_hbeat{}=St0) ->
-    St1 = St0#st_hbeat{rx_tref=undefined},
-
+schedule_transmit(#st_hbeat{rx_tref=undefined}=St0) ->
     Tref = gen_fsm:send_event_after(?ENQ_LNK_INTERVAL, send_enquire_link),
-    St1#st_hbeat{tx_tref=Tref}.
+    St0#st_hbeat{tx_tref=Tref};
+schedule_transmit(#st_hbeat{rx_tref=Tref}=St0) ->
+    gen_fsm:cancel_timer(Tref),
+    schedule_transmit(St0#st_hbeat{rx_tref=undefined}).
 
 transmit_enquire_link(#st_hbeat{tx=Tx, reqs=Reqs0}=St0) ->
     St1 = St0#st_hbeat{tx_tref=undefined},
