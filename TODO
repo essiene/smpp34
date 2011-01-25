@@ -30,5 +30,3 @@ now, only the transmitter smpp34_tx calls out to smpp34_snum to get the
 sequence_number, thus only smpp34_tx can know the sequence_number of an 
 outgoing PDU. Right now though, smpp34_tcprx needs access to smpp34_snum when
 unbinding since it will send the #unbind{} PDU directly (not via the tx).
-
-Review the hearbeat code more closely according to the specs. Something is not quite right.
