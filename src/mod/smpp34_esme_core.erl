@@ -53,9 +53,13 @@ deliver(Pid, Pdu) ->
 init([Owner, Host, Port, Logger]) ->
 	process_flag(trap_exit, true),
 	Mref = erlang:monitor(process, Owner),
-    LogMref = erlang:monitor(process, Logger),
-	St = #st_esmecore{owner=Owner, mref=Mref, log=Logger, log_mref=LogMref},
-
+    St = case Logger of
+        undefined -> 
+            #st_esmecore{owner=Owner, mref=Mref};
+        Pid -> 
+            LogMref = erlang:monitor(process, Pid), 
+            #st_esmecore{owner=Owner, mref=Mref, log=Pid, log_mref=LogMref}
+    end,
     init_stage0(Host, Port, St).
 
 
