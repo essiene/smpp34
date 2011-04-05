@@ -52,12 +52,26 @@ handle_call({send, Status, Body}, _From,
 				#st_tx{socket=Socket, snum=Snum}=St) ->
 	{ok, Num} = smpp34_snum:next(Snum),
 	Bin = smpp34pdu:pack(Status, Num, Body),
-	ok = gen_tcp:send(Socket, Bin),
-	{reply, {ok, Num}, St};
+    Reply = case catch(gen_tcp:send(Socket, Bin)) of
+        ok ->
+            {ok,  Num};
+        {error, Reason} ->
+            {error, Reason};
+        {'EXIT', Reason} ->
+            {error, Reason}
+    end,
+	{reply, Reply, St};
 handle_call({send, Status, Num, Body},_From, #st_tx{socket=Socket}=St)->
 	Bin = smpp34pdu:pack(Status, Num, Body),
-	ok = gen_tcp:send(Socket, Bin),
-	{reply, {ok, Num}, St};
+    Reply = case catch(gen_tcp:send(Socket, Bin)) of
+        ok ->
+            {ok,  Num};
+        {error, Reason} ->
+            {error, Reason};
+        {'EXIT', Reason} ->
+            {error, Reason}
+    end,
+	{reply, Reply, St};
 handle_call(Req, _From, St) ->
     {reply, {error, Req}, St}.
 
