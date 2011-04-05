@@ -9,7 +9,8 @@
 -export([start/3, start/4, start_link/3, start_link/4,
         call/2, call/3, multicall/2, multicall/3,
         multicall/4, cast/2, cast/3, abcast/2, abcast/3,
-        reply/2, ping/1, transmit_pdu/2, transmit_pdu/3, transmit_pdu/4]).
+        reply/2, ping/1, transmit_pdu/2, transmit_pdu/3, transmit_pdu/4,
+        transmit_pdu/5]).
 
 
 -export([init/1, handle_call/3, handle_cast/2,
@@ -95,7 +96,10 @@ transmit_pdu(ServerRef, Body, Extra) ->
 	transmit_pdu(ServerRef, ?ESME_ROK, Body, Extra).
 
 transmit_pdu(ServerRef, Status, Body, Extra) ->
-	ServerRef ! {'$transmit_pdu', Status, Body, Extra},
+    transmit_pdu(ServerRef, Status, undefined, Body, Extra).
+
+transmit_pdu(ServerRef, Status, Snum, Body, Extra) ->
+	ServerRef ! {'$transmit_pdu', Status, Snum, Body, Extra},
     ok.
 
 % gen_server callbacks
@@ -147,8 +151,13 @@ handle_cast(Request, #st_gensmpp34{mod=Mod, mod_st=ModSt}=St) ->
     end.
 
 
-handle_info({'$transmit_pdu', Status, Body, Extra}, #st_gensmpp34{esme=Esme}=St) ->
-	Reply = smpp34_esme_core:send(Esme, Status, Body),
+handle_info({'$transmit_pdu', Status, Snum, Body, Extra}, #st_gensmpp34{esme=Esme}=St) ->
+    Reply = case Snum of 
+        undefined -> 
+            smpp34_esme_core:send(Esme, Status, Body);
+        N -> 
+            smpp34_esme_core:send(Esme, Status, N, Body)
+    end, 
     handle_tx(Reply, Extra, St);
 
 
