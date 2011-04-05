@@ -48,6 +48,8 @@ error(Ref, Format) ->
 error(Ref, Format, Args) ->
     log(Ref, error, Format, Args).
 
+log(undefined, _, _, _) ->
+    ok;
 log(Ref, Level, S, []) ->
     gen_event:notify(Ref, {Level, S});
 log(Ref, Level, Format, FormatArgs) ->
