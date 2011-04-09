@@ -80,6 +80,6 @@ send_pdu(#st_tx{socket=Socket}, #pdu{sequence_number=Num}=Pdu) ->
             {ok,  Num};
         {error, Reason} ->
             {error, Reason};
-        {'EXIT', {R, }} ->
+        {'EXIT', {R, _}} ->
             {error, R}
     end.

@@ -27,10 +27,7 @@ close(Pid) ->
 	gen_fsm:sync_send_event(Pid, close).
 
 send(Pid, #pdu{}=Pdu) ->
-    gen_fsm:sync_send_event(Pid, {send, Pdu});
-
-send(Pid, Body) ->
-	gen_fsm:sync_send_event(Pid, {send, #pdu{body=Body}}).
+    gen_fsm:sync_send_event(Pid, {send, Pdu}).
 
 recv(Pid) ->
 	% by default block forever till response comes back

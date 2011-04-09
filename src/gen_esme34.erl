@@ -9,8 +9,7 @@
 -export([start/3, start/4, start_link/3, start_link/4,
         call/2, call/3, multicall/2, multicall/3,
         multicall/4, cast/2, cast/3, abcast/2, abcast/3,
-        reply/2, ping/1, transmit_pdu/2, transmit_pdu/3, transmit_pdu/4,
-        transmit_pdu/5]).
+        reply/2, ping/1, transmit_pdu/2, transmit_pdu/3]).
 
 
 -export([init/1, handle_call/3, handle_cast/2,
@@ -91,23 +90,11 @@ ping(ServerRef) ->
 
 
 transmit_pdu(ServerRef, #pdu{}=Pdu) ->
-    transmit_pdu(ServerRef, Pdu, undefined);
-
-transmit_pdu(ServerRef, Body) ->
-    transmit_pdu(ServerRef, #pdu{body=Body}).
+    transmit_pdu(ServerRef, Pdu, undefined).
 
 transmit_pdu(ServerRef, #pdu{}=Pdu, Extra) ->
-    gen_server:call(ServerRef, {transmit_pdu, Pdu, Extra});
+    gen_server:call(ServerRef, {transmit_pdu, Pdu, Extra}).
 
-transmit_pdu(ServerRef, Body, Extra) ->
-	transmit_pdu(ServerRef, Body, Extra).
-
-transmit_pdu(ServerRef, Status, Body, Extra) ->
-    transmit_pdu(ServerRef, #pdu{command_status=Status, body=Body}, Extra).
-
-transmit_pdu(ServerRef, Status, Snum, Body, Extra) ->
-    transmit_pdu(ServerRef, #pdu{command_status=Status, sequence_number=Snum,
-                                 body=Body}, Extra).
 
 % gen_server callbacks
 
