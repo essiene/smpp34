@@ -99,7 +99,7 @@ transmit_pdu(ServerRef, Status, Body, Extra) ->
     transmit_pdu(ServerRef, Status, undefined, Body, Extra).
 
 transmit_pdu(ServerRef, Status, Snum, Body, Extra) ->
-    gen_server:call(ServerRef, {'$transmit_pdu', Status, Snum, Body, Extra}).
+    gen_server:call(ServerRef, {transmit_pdu, Status, Snum, Body, Extra}).
 
 % gen_server callbacks
 
@@ -111,7 +111,7 @@ init([{'__gen_esme34_mod', Mod} | InitArgs]) ->
     init_stage0(Mod, InitArgs1, GenEsme34Opts).
 
 
-handle_call({'$transmit_pdu', Status, Snum, Body, Extra}, _From, #st_gensmpp34{esme=Esme}=St) ->
+handle_call({transmit_pdu, Status, Snum, Body, Extra}, _From, #st_gensmpp34{esme=Esme}=St) ->
     Reply = case Snum of 
         undefined -> 
             smpp34_esme_core:send(Esme, Status, Body);
