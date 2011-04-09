@@ -89,17 +89,25 @@ reply(Client, Reply) ->
 ping(ServerRef) ->
     gen_server:call(ServerRef, ping).
 
+
+transmit_pdu(ServerRef, #pdu{}=Pdu) ->
+    transmit_pdu(ServerRef, Pdu, undefined);
+
 transmit_pdu(ServerRef, Body) ->
-    transmit_pdu(ServerRef, Body, undefined).
+    transmit_pdu(ServerRef, #pdu{body=Body}).
+
+transmit_pdu(ServerRef, #pdu{}=Pdu, Extra) ->
+    gen_server:call(ServerRef, {transmit_pdu, Pdu, Extra});
 
 transmit_pdu(ServerRef, Body, Extra) ->
-	transmit_pdu(ServerRef, ?ESME_ROK, Body, Extra).
+	transmit_pdu(ServerRef, Body, Extra).
 
 transmit_pdu(ServerRef, Status, Body, Extra) ->
-    transmit_pdu(ServerRef, Status, undefined, Body, Extra).
+    transmit_pdu(ServerRef, #pdu{command_status=Status, body=Body}, Extra).
 
 transmit_pdu(ServerRef, Status, Snum, Body, Extra) ->
-    gen_server:call(ServerRef, {transmit_pdu, Status, Snum, Body, Extra}).
+    transmit_pdu(ServerRef, #pdu{command_status=Status, sequence_number=Snum,
+                                 body=Body}, Extra).
 
 % gen_server callbacks
 
@@ -111,13 +119,8 @@ init([{'__gen_esme34_mod', Mod} | InitArgs]) ->
     init_stage0(Mod, InitArgs1, GenEsme34Opts).
 
 
-handle_call({transmit_pdu, Status, Snum, Body, Extra}, _From, #st_gensmpp34{esme=Esme}=St) ->
-    Reply = case Snum of 
-        undefined -> 
-            smpp34_esme_core:send(Esme, Status, Body);
-        N -> 
-            smpp34_esme_core:send(Esme, Status, N, Body)
-    end, 
+handle_call({transmit_pdu, Pdu, Extra}, _From, #st_gensmpp34{esme=Esme}=St) ->
+    Reply = smpp34_esme_core:send(Esme, Pdu),
     self() ! {handle_tx, Reply, Extra},
     {reply, ok, St};
 
@@ -207,12 +210,12 @@ do_pduspec(St, []) ->
 do_pduspec(St, [H|T]) ->
 	{noreply, St1} = do_pduspec(St, H),
 	do_pduspec(St1, T);
-do_pduspec(#st_gensmpp34{esme=E}=St, {Status, Snum, PduBody, Extra}) ->
-	Reply = smpp34_esme_core:send(E, Status, Snum, PduBody),
+do_pduspec(#st_gensmpp34{esme=E}=St, {Pdu, Extra}) ->
+	Reply = smpp34_esme_core:send(E, Pdu),
     handle_tx(Reply, Extra, St);
-do_pduspec(#st_gensmpp34{esme=E}=St, {Status, PduBody, Extra}) ->
-	Reply = smpp34_esme_core:send(E, Status, PduBody),
-    handle_tx(Reply, Extra, St).
+do_pduspec(#st_gensmpp34{esme=E}=St, Pdu) ->
+	Reply = smpp34_esme_core:send(E, Pdu),
+    handle_tx(Reply, undefined, St).
 
 handle_tx(Reply, Extra, #st_gensmpp34{mod=Mod, pdutx=Tx, mod_st=ModSt}=St0) ->
 	St = St0#st_gensmpp34{pdutx=Tx+1},

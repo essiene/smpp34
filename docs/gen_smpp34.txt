@@ -112,18 +112,10 @@ This reply tuple triggers gen_esme34 to transmit the PduSpec to the SMSC.
 
 The PduSpec can be:
 
-    - {SmppStatus, PduBody, Extra}
-    - {SmppStatus, SmppSequenceNumber, PduBody, Extra}
+    - #pdu{}
+    - {#pdu{}, Extra}
     - [PduSpec]
     - []
-
-SmppStatus parameter is packed into the command_status field of the PDU
-header.
-
-SmppSequenceNumber is also packed into the sequence_number field of the PDU 
-header.
-
-PduBody is one of the pdu body types in smpp34pdu library.
 
 The parameter 'Extra' is passed to handle_tx in the 'Extra' parameter. See
 further below for more information.
@@ -147,21 +139,20 @@ sending (either when the {tx,_,_} tuple is returned from handle_rx/2 or
 as we shall soon see, when calling transmit_pdu. This should be carry at
 least a transaction id uniquely associated with the PDU.
 
+If no extra parameter was specified, it will be the atom 'undefined'
+
 
 Transmission From Userspace
 ---------------------------
 
 Apart from returning the {tx,_,_} tuple from handle_rx/2, it is possible to 
-initiate a transmit from userspace. This is done by calling any of the 
+initiate a transmit from userspace. This is done by calling any of the
 transmit_pdu functions:
 
-   - transmit_pdu(ServerRef, Body)
-   - transmit_pdu(ServerRef, Body, Extra)
-   - transmit_pdu(ServerRef, Status, Body, Extra)
+   - transmit_pdu(ServerRef, Pdu)
+   - transmit_pdu(ServerRef, Pdu, Extra)
 
 ServerRef is the gen_esme34 server reference returned from start or start_link.
-Status is an SmppStatus e.g. ?ESME_ROK, etc
-PduBody is a PDU record as provided by smpp34pdu library
 Extra is the extra parameter passed to handle_tx. Note that in transmit_pdu/2
       where the extra parameter is not supplied, the atom undefined, is sent
       to handle_tx.
@@ -188,4 +179,5 @@ When the SMSC sends an Unbind pdu, esme_core will honor this by sending the
 unbind response and disconnecting. The gen_esme34 will die with the proper
 reason. If an unbind response is recieved due to an unbind we sent earlier,
 the same thing happens.
+
 

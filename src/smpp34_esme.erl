@@ -1,5 +1,6 @@
 -module(smpp34_esme).
 -behaviour(gen_fsm).
+-include_lib("smpp34pdu/include/smpp34pdu.hrl").
 -include("util.hrl").
 
 -record(st, {esme, esme_mref, pduq, recvq, close_reason}).
@@ -8,7 +9,7 @@
 %% API Function Exports
 %% ------------------------------------------------------------------
 
--export([connect/2, close/1, send/2, send/3, send/4, recv/1, recv/2]).
+-export([connect/2, close/1, send/2, recv/1, recv/2]).
 
 %% ------------------------------------------------------------------
 %% gen_fsm Function Exports
@@ -25,14 +26,11 @@ connect(Host, Port) ->
 close(Pid) ->
 	gen_fsm:sync_send_event(Pid, close).
 
+send(Pid, #pdu{}=Pdu) ->
+    gen_fsm:sync_send_event(Pid, {send, Pdu});
+
 send(Pid, Body) ->
-	gen_fsm:sync_send_event(Pid, {send, Body}).
-
-send(Pid, Status, Body) ->
-	gen_fsm:sync_send_event(Pid, {send, Status, Body}).
-
-send(Pid, Status, Snum, Body) ->
-	gen_fsm:sync_send_event(Pid, {send, Status, Snum, Body}).
+	gen_fsm:sync_send_event(Pid, {send, #pdu{body=Body}}).
 
 recv(Pid) ->
 	% by default block forever till response comes back
@@ -60,12 +58,8 @@ closed(_Event, St) ->
 
 open(close, _F, #st{esme=E}=St) ->
   {reply, smpp34_esme_core:stop(E), closed, St#st{close_reason=closed}};
-open({send, Body}, _F, #st{esme=E}=St) ->
-  {reply, smpp34_esme_core:send(E, Body), open, St};
-open({send, Status, Body}, _F, #st{esme=E}=St) ->
-  {reply, smpp34_esme_core:send(E, Status, Body), open, St};
-open({send, Status, Snum, Body}, _F, #st{esme=E}=St) ->
-  {reply, smpp34_esme_core:send(E, Status, Snum, Body), open, St};
+open({send, Pdu}, _F, #st{esme=E}=St) ->
+  {reply, smpp34_esme_core:send(E, Pdu), open, St};
 open({recv, Timeout}, From, St) ->
 	Item = dkq:item(Timeout, From),
 	do_recv(St, open, Item);

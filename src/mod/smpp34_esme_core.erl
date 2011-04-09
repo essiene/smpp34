@@ -16,7 +16,7 @@
 %% API Function Exports
 %% ------------------------------------------------------------------
 
--export([start_link/4, stop/1, send/2, send/3, send/4, deliver/2]).
+-export([start_link/4, stop/1, send/2, deliver/2]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
@@ -34,14 +34,8 @@ start_link(Owner, Host, Port, Logger) ->
 stop(Pid) ->
 	gen_server:call(Pid, stop).
 
-send(Pid, Body) ->
-	send(Pid, ?ESME_ROK, Body).
-
-send(Pid, Status, Body) ->
-	gen_server:call(Pid, {tx, Status, Body}).
-
-send(Pid, Status, Snum, Body) ->
-	gen_server:call(Pid, {tx, Status, Snum, Body}).
+send(Pid, #pdu{}=Pdu) ->
+    gen_server:call(Pid, {tx, Pdu}).
 
 deliver(Pid, Pdu) ->
     gen_server:call(Pid, {deliver, self(), Pdu}).
@@ -66,10 +60,8 @@ init([Owner, Host, Port, Logger]) ->
 handle_call({deliver, Rx, Pdu}, _From, #st_esmecore{rx=Rx, owner=Owner}=St) ->
   Owner ! {esme_data, self(), Pdu},
   {reply, ok, St};
-handle_call({tx, Status, Body}, _From, #st_esmecore{tx=Tx}=St) ->
-  {reply, catch(smpp34_tx:send(Tx, Status, Body)), St};
-handle_call({tx, Status, Snum, Body}, _From, #st_esmecore{tx=Tx}=St) ->
-  {reply, catch(smpp34_tx:send(Tx, Status, Snum, Body)), St};
+handle_call({tx, #pdu{}=Pdu}, _From, #st_esmecore{tx=Tx}=St) ->
+  {reply, catch(smpp34_tx:send(Tx, Pdu)), St};
 handle_call(stop, _From, St) ->
   {stop, normal, ok, St};
 handle_call(R, _From, St) ->
