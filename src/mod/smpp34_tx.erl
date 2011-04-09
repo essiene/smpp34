@@ -22,11 +22,8 @@ start_link(Owner, Socket, Logger) ->
 stop(Pid) ->
     gen_server:cast(Pid, stop).
 
-send(Pid, Status, Body) ->
-	gen_server:call(Pid, {send, Status, Body}).
-
-send(Pid, Status, Snum, Body) ->
-	gen_server:call(Pid, {send, Status, Snum, Body}).
+send(Pid, Pdu) ->
+	gen_server:call(Pid, {send, Pdu}).
 
 ping(Pid) ->
 	gen_server:call(Pid, ping).
@@ -48,30 +45,8 @@ init([Owner, Socket, Logger]) ->
 
 handle_call(ping, _From, #st_tx{owner=Owner, socket=Socket, snum=Snum}=St) ->
 	{reply, {pong, [{owner, Owner}, {socket, Socket}, {snum, Snum}]}, St};
-handle_call({send, Status, Body}, _From, 
-				#st_tx{socket=Socket, snum=Snum}=St) ->
-	{ok, Num} = smpp34_snum:next(Snum),
-	Bin = smpp34pdu:pack(Status, Num, Body),
-    Reply = case catch(gen_tcp:send(Socket, Bin)) of
-        ok ->
-            {ok,  Num};
-        {error, Reason} ->
-            {error, Reason};
-        {'EXIT', Reason} ->
-            {error, Reason}
-    end,
-	{reply, Reply, St};
-handle_call({send, Status, Num, Body},_From, #st_tx{socket=Socket}=St)->
-	Bin = smpp34pdu:pack(Status, Num, Body),
-    Reply = case catch(gen_tcp:send(Socket, Bin)) of
-        ok ->
-            {ok,  Num};
-        {error, Reason} ->
-            {error, Reason};
-        {'EXIT', Reason} ->
-            {error, Reason}
-    end,
-	{reply, Reply, St};
+handle_call({send, Pdu},_From, St)->
+	{reply, send_pdu(St, Pdu), St};
 handle_call(Req, _From, St) ->
     {reply, {error, Req}, St}.
 
