@@ -35,11 +35,15 @@ enquire_link_resp(Pid, Snum) ->
 
 transmit_scheduled(send_enquire_link, #st_hbeat{log=Log}=St0) ->
 
-    {St1, Snum} = transmit_enquire_link(St0),
-    St2 = schedule_late_response(St1, Snum),
+    case transmit_enquire_link(St0) of 
+        {error, Reason} ->
+            {stop, Reason, St0};
+        {St1, Snum} ->
+            St2 = schedule_late_response(St1, Snum),
 
-    smpp34_log:debug(Log, "hbeat: EnquireLink/~p sent", [Snum]),
-    {next_state, enquire_link_sent, St2};
+            smpp34_log:debug(Log, "hbeat: EnquireLink/~p sent", [Snum]),
+            {next_state, enquire_link_sent, St2}
+    end;
 
 transmit_scheduled(_E, St) ->
     {next_state, transmit_scheduled, St}.
@@ -140,12 +144,16 @@ schedule_transmit(#st_hbeat{rx_tref=Tref}=St0) ->
 transmit_enquire_link(#st_hbeat{tx=Tx, reqs=Reqs0}=St0) ->
     St1 = St0#st_hbeat{tx_tref=undefined},
 
-    {ok, Snum} = smpp34_tx:send(Tx, ?ESME_ROK, #enquire_link{}),
+    Pdu = #pdu{command_status=?ESME_ROK, body=#enquire_link{}},
+    case smpp34_tx:send(Tx, Pdu) of 
+        {error, Reason} ->
+            {error, Reason};
+        {ok, Snum} -> 
+            T1 = erlang:now(),
+            Reqs1 = [{Snum, T1}|Reqs0],
 
-    T1 = erlang:now(),
-    Reqs1 = [{Snum, T1}|Reqs0],
-
-    {St1#st_hbeat{reqs=Reqs1}, Snum}.
+            {St1#st_hbeat{reqs=Reqs1}, Snum}
+    end.
 
 schedule_late_response(#st_hbeat{resp_time=RespTime}=St, Snum) ->
     Tref = gen_fsm:send_event_after(RespTime, {late_response, Snum}),
