@@ -99,8 +99,7 @@ transmit_pdu(ServerRef, Status, Body, Extra) ->
     transmit_pdu(ServerRef, Status, undefined, Body, Extra).
 
 transmit_pdu(ServerRef, Status, Snum, Body, Extra) ->
-	ServerRef ! {'$transmit_pdu', Status, Snum, Body, Extra},
-    ok.
+    gen_server:call(ServerRef, {'$transmit_pdu', Status, Snum, Body, Extra}).
 
 % gen_server callbacks
 
@@ -112,6 +111,15 @@ init([{'__gen_esme34_mod', Mod} | InitArgs]) ->
     init_stage0(Mod, InitArgs1, GenEsme34Opts).
 
 
+handle_call({'$transmit_pdu', Status, Snum, Body, Extra}, _From, #st_gensmpp34{esme=Esme}=St) ->
+    Reply = case Snum of 
+        undefined -> 
+            smpp34_esme_core:send(Esme, Status, Body);
+        N -> 
+            smpp34_esme_core:send(Esme, Status, N, Body)
+    end, 
+    self ! {handle_tx, Reply, Extra},
+    {reply, ok, St};
 
 handle_call(ping, _From, #st_gensmpp34{t1=T1, pdutx=TxCount, pdurx=RxCount}=St) ->
     UptimeS = timer:now_diff(now(), T1) div 1000000,
@@ -151,15 +159,9 @@ handle_cast(Request, #st_gensmpp34{mod=Mod, mod_st=ModSt}=St) ->
     end.
 
 
-handle_info({'$transmit_pdu', Status, Snum, Body, Extra}, #st_gensmpp34{esme=Esme}=St) ->
-    Reply = case Snum of 
-        undefined -> 
-            smpp34_esme_core:send(Esme, Status, Body);
-        N -> 
-            smpp34_esme_core:send(Esme, Status, N, Body)
-    end, 
-    handle_tx(Reply, Extra, St);
 
+handle_info({handle_tx, Reply, Extra}, St) ->
+    handle_tx(Reply, Extra, St);
 
 handle_info({esme_data, Esme, Pdu}, #st_gensmpp34{mod=Mod, mod_st=ModSt, esme=Esme, pdurx=Rx}=St0) ->
     St = St0#st_gensmpp34{pdurx=Rx+1},
