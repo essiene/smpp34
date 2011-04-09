@@ -118,7 +118,7 @@ handle_call({'$transmit_pdu', Status, Snum, Body, Extra}, _From, #st_gensmpp34{e
         N -> 
             smpp34_esme_core:send(Esme, Status, N, Body)
     end, 
-    self ! {handle_tx, Reply, Extra},
+    self() ! {handle_tx, Reply, Extra},
     {reply, ok, St};
 
 handle_call(ping, _From, #st_gensmpp34{t1=T1, pdutx=TxCount, pdurx=RxCount}=St) ->
