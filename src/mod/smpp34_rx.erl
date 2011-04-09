@@ -60,16 +60,18 @@ init([Owner, Tx, Socket, Logger]) ->
 	end.
 
 
-handle_call({Rx, #pdu{sequence_number=Snum, body=#enquire_link{}}}, _F,
+handle_call({Rx, #pdu{sequence_number=Snum, body=#enquire_link{}}=Pdu}, _F,
 					#st_rx{tx=Tx, rx=Rx, log=Log}=St) ->	
     smpp34_log:info(Log, "rx: EnquireLink/~p received", [Snum]),
-    {ok, Snum} = tx_send(Tx, ?ESME_ROK, Snum, #enquire_link_resp{}),
+    Pdu1 = Pdu#pdu{command_status=?ESME_ROK, body=#enquire_link_resp{}},
+    {ok, Snum} = tx_send(Tx, Pdu1),
     smpp34_log:info(Log, "rx: EnquireLinkResp/~p sent", [Snum]),
 	{reply, ok, St};
-handle_call({Rx, #pdu{sequence_number=Snum, body=#unbind{}}}, _F,
+handle_call({Rx, #pdu{sequence_number=Snum, body=#unbind{}}=Pdu}, _F,
 					#st_rx{tx=Tx, rx=Rx, log=Log}=St) ->	
     smpp34_log:warn(Log, "rx: Unbind PDU received"),
-    {ok, Snum} = tx_send(Tx, ?ESME_ROK, Snum, #unbind_resp{}), _F,
+    Pdu1 = Pdu#pdu{command_status=?ESME_ROK, body=#unbind_resp{}},
+    {ok, Snum} = tx_send(Tx, Pdu1),
     smpp34_log:warn(Log, "rx: UnbindResp PDU sent"),
 	{stop, unbind, St};
 handle_call({Rx, #pdu{sequence_number=Snum, body=#enquire_link_resp{}}}, _F, #st_rx{rx=Rx, hb=Hb}=St) ->	
@@ -113,10 +115,10 @@ code_change(_OldVsn, St, _Extra) ->
     {noreply, St}.
 
 
-tx_send(undefined, _, _, _) ->
+tx_send(undefined, _) ->
 	ok;
-tx_send(Tx, Status, Snum, Body) ->
-	catch(smpp34_tx:send(Tx, Status, Snum, Body)).
+tx_send(Tx, Pdu) ->
+    catch(smpp34_tx:send(Tx, Pdu)). % think more globally with handling of timeouts
 
 owner_send(Owner, Pdu) ->
     smpp34_esme_core:deliver(Owner, Pdu).
