@@ -291,7 +291,13 @@ init_stage2({Host, Port, _}=ConnSpec, Opts, #st_gensmpp34{logger=Logger}=St0) ->
 
 % Stage 3: Send Bind PDU to endpoint
 init_stage3({_,_,BindPdu}, Esme, Opts, #st_gensmpp34{logger=Logger}=St) -> 
-    case smpp34_esme_core:send(Esme, BindPdu) of 
+    SendPdu = case BindPdu of
+        #pdu{}= P ->
+            P;
+        Body ->
+            #pdu{body=Body}
+    end,
+    case smpp34_esme_core:send(Esme, SendPdu) of 
         {error, Reason} -> 
             smpp34_log:error(Logger, "gen_esme34: ~p while sending Bind PDU", [Reason]),
             {stop, Reason}; 
@@ -300,7 +306,7 @@ init_stage3({_,_,BindPdu}, Esme, Opts, #st_gensmpp34{logger=Logger}=St) ->
 
             receive 
                 {esme_data, Esme, Pdu} ->
-                    init_stage4(Pdu, BindPdu, Opts, St)
+                    init_stage4(Pdu, SendPdu#pdu.body, Opts, St)
              after Timeout -> 
                 smpp34_log:error(Logger, "gen_esme34: Timeout (~pms) while sending Bind PDU", [Timeout]),
                 {stop, timeout} 
