@@ -121,6 +121,8 @@ handle_call(Request, From, #st_gensmpp34{mod=Mod, mod_st=ModSt}=St) ->
             {reply, Reply, St#st_gensmpp34{mod_st=ModSt1}, hibernate};
         {reply, Reply, ModSt1, Timeout} ->
             {reply, Reply, St#st_gensmpp34{mod_st=ModSt1}, Timeout};
+   		{tx, PduSpec, ModSt1} ->
+			do_pduspec(St#st_gensmpp34{mod_st=ModSt1}, PduSpec);
         {noreply, ModSt1} ->
             {noreply, St#st_gensmpp34{mod_st=ModSt1}};
         {noreply, ModSt1, hibernate} ->
@@ -135,6 +137,8 @@ handle_call(Request, From, #st_gensmpp34{mod=Mod, mod_st=ModSt}=St) ->
 
 handle_cast(Request, #st_gensmpp34{mod=Mod, mod_st=ModSt}=St) ->
     case Mod:handle_cast(Request, ModSt) of
+   		{tx, PduSpec, ModSt1} ->
+			do_pduspec(St#st_gensmpp34{mod_st=ModSt1}, PduSpec);
         {noreply, ModSt1} ->
             {noreply, St#st_gensmpp34{mod_st=ModSt1}};
         {noreply, ModSt1, hibernate} ->
@@ -170,6 +174,8 @@ handle_info(#'DOWN'{ref=Mref, reason=R}, #st_gensmpp34{esme_mref=Mref, logger=Lo
 	{stop, normal, St};
 handle_info(Info, #st_gensmpp34{mod=Mod, mod_st=ModSt}=St) ->
     case Mod:handle_info(Info, ModSt) of
+   		{tx, PduSpec, ModSt1} ->
+			do_pduspec(St#st_gensmpp34{mod_st=ModSt1}, PduSpec);
         {noreply, ModSt1} ->
             {noreply, St#st_gensmpp34{mod_st=ModSt1}};
         {noreply, ModSt1, hibernate} ->
@@ -205,6 +211,8 @@ handle_tx(Reply, Extra, #st_gensmpp34{mod=Mod, pdutx=Tx, mod_st=ModSt}=St0) ->
 	St = St0#st_gensmpp34{pdutx=Tx+1},
 
     case Mod:handle_tx(Reply, Extra, ModSt) of 
+   		{tx, PduSpec, ModSt1} ->
+			do_pduspec(St#st_gensmpp34{mod_st=ModSt1}, PduSpec);
         {noreply, ModSt1} ->
             {noreply, St#st_gensmpp34{mod_st=ModSt1}};
         {noreply, ModSt1, hibernate} ->
