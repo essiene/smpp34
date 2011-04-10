@@ -3,9 +3,9 @@
 
 
 snum_test_() ->
-    {ok, Snum0} = smpp34_snum:start_link(self()),
-	{ok, Snum1} = smpp34_snum:start_link(self(), 56),
-	{ok, Snum2} = smpp34_snum:start_link(self(), 16#7fffffff),
+    {ok, Snum0} = smpp34_snum:start_link(self(), undefined),
+	{ok, Snum1} = smpp34_snum:start_link(self(), 56, undefined),
+	{ok, Snum2} = smpp34_snum:start_link(self(), 16#7fffffff, undefined),
 
 
     [
