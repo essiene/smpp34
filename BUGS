@@ -1,0 +1,17 @@
+Right now, it is possible for a fast SMSC to crash gen_esme34 and smpp34_esme
+because the DELIVER pipe line only synchronous up to the hand-over to 
+gen_esme34 and smpp34_esme. At that last point, an erlang message is sent,
+which is _always_ successfull, meaning the process mailbox can grow infinitely
+untill the process crashes.
+
+The proper thing to do is to use gen_server:call/3 to deliver the message to
+either gen_esme34 or smpp34_esme. The current constraint exists because 
+smpp34_esme_core does not have an alternate interface for explicity receives.
+During gen_esme34:init/1 at one of the init stages, gen_esme34 calls
+smpp34_esme_core:send/2 and has to enter a receive..end loop to wait for a response,
+when rather gen_esme34 should be calling smpp34_esme_core:recv/2 to retrieve the
+needed response.
+
+smpp34_esme_core now needs to support both synchronous and asynchronous interfaces,
+which means moving functionality from smpp34_esme into smpp34_esme_core or just
+using smpp34_esme to build gen_esme34
