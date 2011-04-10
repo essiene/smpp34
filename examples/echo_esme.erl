@@ -44,12 +44,12 @@ handle_tx({error, Reason}, Extra, St) ->
 	{noreply, St}.
 
 
-handle_rx(#pdu{sequence_number=Snum, body=#deliver_sm{source_addr=Src, destination_addr=Dst, short_message=Msg}}=Pdu, St) ->
+handle_rx(#pdu{body=#deliver_sm{source_addr=Src, destination_addr=Dst, short_message=Msg}}=Pdu, St) ->
     error_logger:info_msg("echo|rx|~p~n", [Pdu]),
     Did = id(),
-    DsmResp = #deliver_sm_resp{message_id=Did},
-    SubmitSm = #submit_sm{source_addr=Dst, destination_addr=Src, short_message=Msg},
-    {tx, [{?ESME_ROK, Snum, DsmResp, Did}, {?ESME_ROK, SubmitSm, id()}], St};
+    DsmResp = Pdu#pdu{command_status=?ESME_ROK, body=#deliver_sm_resp{message_id=Did}},
+    SubmitSm = #pdu{body=#submit_sm{source_addr=Dst, destination_addr=Src, short_message=Msg}},
+    {tx, [{DsmResp, Did}, {SubmitSm, id()}], St};
 
 handle_rx(Pdu, St) ->
     error_logger:info_msg("echo|rx|~p~n", [Pdu]),

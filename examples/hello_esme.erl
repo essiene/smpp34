@@ -21,7 +21,7 @@ stop() ->
     gen_esme34:cast(?MODULE, stop).
 
 sendsms(Source, Dest, Msg) ->
-    S = #submit_sm{source_addr=Source, destination_addr=Dest, short_message=Msg},
+    S = #pdu{body=#submit_sm{source_addr=Source, destination_addr=Dest, short_message=Msg}},
     gen_esme34:transmit_pdu(?MODULE, S, id()).
 
 ping() ->
@@ -41,13 +41,13 @@ handle_tx({error, Reason}, Extra, St) ->
 	error_logger:info_msg("helo|tx|~p|err|~p~n", [Extra, Reason]),
 	{noreply, St}.
 
-handle_rx(#pdu{sequence_number=Snum, body=#deliver_sm{source_addr=Src, destination_addr=Dst, short_message=_Msg}}=Pdu, St) ->
+handle_rx(#pdu{body=#deliver_sm{source_addr=Src, destination_addr=Dst, short_message=_Msg}}=Pdu, St) ->
     error_logger:info_msg("helo|rx|~p~n", [Pdu]),
     Did = id(),
-    DeliverSmResp = #deliver_sm_resp{message_id=Did},
-    SubmitSm = #submit_sm{source_addr=Dst, destination_addr=Src, short_message="Hello SMPP World"},
+    DeliverSmResp = Pdu#pdu{command_status=?ESME_ROK, body=#deliver_sm_resp{message_id=Did}},
+    SubmitSm = #pdu{body=#submit_sm{source_addr=Dst, destination_addr=Src, short_message="Hello SMPP World"}},
     gen_esme34:transmit_pdu(self(), SubmitSm, id()),
-    {tx, {?ESME_ROK, Snum, DeliverSmResp, Did}, St};
+    {tx, {DeliverSmResp, Did}, St};
 
 handle_rx(Pdu, St) ->
     error_logger:info_msg("helo|rx|~p~n", [Pdu]),
