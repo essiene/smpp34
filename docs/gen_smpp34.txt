@@ -103,8 +103,25 @@ The handle_rx callback accepts the Pdu as the first parameter and the module
 state as the second parameter. The Pdu can be then accessed for what ever work
 is required and the callback reply returned.
 
-handle_rx/2 can respond with replies valid for gen_server:info/2 callback, but
-in addition to those replies, it can also reply with the 'tx' tuple:
+
+Transmitting Pdus
+-----------------
+
+Apart from init/1, terminate/2 and code_change/3, all other callbacks implement
+the {tx,} tuple response. This response spec is used when transmitting a PDU
+from within gen_esme34 itself as opposed to transmitting from user space. 
+
+Transmitting from userspace is covered further below.
+
+handle_rx/2 and handle_tx/3 can respond with replies valid for 
+gen_server:info/2 callback, but in addition to those replies, it can also 
+reply with the 'tx' tuple. Also, handle_call/3, handle_cast/2 and handle_info/2
+can also response with the 'tx' tuple.
+
+Note that for handle_call/3, if the 'tx' tuple is returned, instead of a 
+reply tuple, the gen_esme34 will have to explicitly call gen_esme34:reply/2
+
+The 'tx' tuple looks like:
 
     {tx, PduSpec, State}
 
@@ -117,9 +134,8 @@ The PduSpec can be:
     - [PduSpec]
     - []
 
-The parameter 'Extra' is passed to handle_tx in the 'Extra' parameter. See
-further below for more information.
-
+The parameter 'Extra' is passed 'as-is' to handle_tx in the 'Extra' parameter. 
+See further below for more information.
 
 
 Transmitted Pdus

@@ -30,3 +30,8 @@ now, only the transmitter smpp34_tx calls out to smpp34_snum to get the
 sequence_number, thus only smpp34_tx can know the sequence_number of an 
 outgoing PDU. Right now though, smpp34_tcprx needs access to smpp34_snum when
 unbinding since it will send the #unbind{} PDU directly (not via the tx).
+
+We really need a gen_esme34:send(Pdu) that can be called from inside gen_esme34
+to transmit PDUs, using {tx,,} tuple works but is prone to latency when sending
+multiple PDUs, since the entire list has to be built before {tx, [Pdu], St} is
+returned
