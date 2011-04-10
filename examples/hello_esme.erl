@@ -46,8 +46,7 @@ handle_rx(#pdu{body=#deliver_sm{source_addr=Src, destination_addr=Dst, short_mes
     Did = id(),
     DeliverSmResp = Pdu#pdu{command_status=?ESME_ROK, body=#deliver_sm_resp{message_id=Did}},
     SubmitSm = #pdu{body=#submit_sm{source_addr=Dst, destination_addr=Src, short_message="Hello SMPP World"}},
-    gen_esme34:transmit_pdu(self(), SubmitSm, id()),
-    {tx, {DeliverSmResp, Did}, St};
+    {tx, [{DeliverSmResp, Did}, {SubmitSm, id()}], St};
 
 handle_rx(Pdu, St) ->
     error_logger:info_msg("helo|rx|~p~n", [Pdu]),
