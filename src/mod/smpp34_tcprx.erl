@@ -66,10 +66,16 @@ terminate(_, #st_tcprx{socket=S}) ->
 	% Since we're quitting, just plunk in the maximum serial number
 	% untill we find a better way to interact with smpp34_tx to
 	% get the valid current serial number
-	Bin = smpp34pdu:pack(?ESME_ROK, ?SNUM_MAX, #unbind{}),
-	catch(gen_tcp:send(S, Bin)),
-	catch(gen_tcp:close(S)),
-    ok.
+    Pdu = #pdu{sequence_number=?SNUM_MAX, body=#unbind{}},
+	case smpp34pdu:pack(Pdu) of
+        {error, _} ->
+            % we're exiting anyways
+            ok;
+        {ok, Bin} ->
+            catch(gen_tcp:send(S, Bin)),
+            catch(gen_tcp:close(S)),
+            ok
+    end.
 
 code_change(_OldVsn, St, _Extra) ->
     {noreply, St}.

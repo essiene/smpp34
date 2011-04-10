@@ -74,12 +74,16 @@ send_pdu(#st_tx{snum=Snum}=St, #pdu{sequence_number=undefined}=Pdu) ->
 	{ok, Num} = smpp34_snum:next(Snum),
     send_pdu(St, Pdu#pdu{sequence_number=Num});
 send_pdu(#st_tx{socket=Socket}, #pdu{sequence_number=Num}=Pdu) ->
-	Bin = smpp34pdu:pack(Pdu),
-    case catch(gen_tcp:send(Socket, Bin)) of
-        ok ->
-            {ok,  Num};
+	case smpp34pdu:pack(Pdu) of
         {error, Reason} ->
             {error, Reason};
-        {'EXIT', {R, _}} ->
-            {error, R}
+        {ok, Bin} ->
+            case catch(gen_tcp:send(Socket, Bin)) of
+                ok ->
+                    {ok,  Num};
+                {error, Reason} ->
+                    {error, Reason};
+                {'EXIT', {R, _}} ->
+                    {error, R}
+            end
     end.
