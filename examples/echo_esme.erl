@@ -32,7 +32,7 @@ sendsms(Source, Dest, Msg) ->
 
 init([Host, Port, SystemId, Password]) ->
     {ok, {Host, Port, 
-            #bind_transceiver{system_id=SystemId, password=Password}}, 
+            #pdu{body=#bind_transceiver{system_id=SystemId, password=Password}}}, 
             #state{host=Host, port=Port, system_id=SystemId, password=Password}}.
 
 

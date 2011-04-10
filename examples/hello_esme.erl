@@ -30,7 +30,7 @@ ping() ->
 init([Owner, Host, Port, SystemId, Password]) ->
 	Mref = erlang:monitor(process, Owner),
     {ok, {Host, Port, 
-            #bind_receiver{system_id=SystemId, password=Password}}, 
+            #pdu{body=#bind_receiver{system_id=SystemId, password=Password}}}, 
             #state{host=Host, port=Port, system_id=SystemId, password=Password,
 			owner=Owner, mref=Mref}}.
 
