@@ -115,10 +115,12 @@ handle_call({transmit_pdu, Pdu, Extra}, _From, #st_gensmpp34{esme=Esme}=St) ->
     self() ! {handle_tx, Reply, Extra},
     {reply, ok, St};
 
-handle_call(ping, _From, #st_gensmpp34{t1=T1, pdutx=TxCount, pdurx=RxCount}=St) ->
+handle_call(ping, _From, #st_gensmpp34{t1=T1, pdutx=TxCount, pdurx=RxCount,
+                                       async_transmit_count=AsyncTCount}=St) ->
     UptimeS = timer:now_diff(now(), T1) div 1000000,
     Uptime = calendar:seconds_to_daystime(UptimeS),
-    {reply, {pong, [{uptime, Uptime}, {txpdu, TxCount}, {rxpdu, RxCount}]}, St};
+    {reply, {pong, [{uptime, Uptime}, {txpdu, TxCount}, {rxpdu, RxCount},
+                    {async_transmit_count, AsyncTCount}]}, St};
 
 handle_call(Request, From, #st_gensmpp34{mod=Mod, mod_st=ModSt}=St) ->
     case Mod:handle_call(Request, From, ModSt) of 
