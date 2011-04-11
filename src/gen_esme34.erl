@@ -302,6 +302,8 @@ init_stage0(Mod, Args, Opts) ->
 
 % Stage 1: initialize gen_smpp34 callback module
 init_stage1(Mod, Args, Opts, #st_gensmpp34{logger=Logger}=St0) ->
+    MaxAsyncTrans = proplists:get_value(max_async_transmit, Opts, infinity),
+        
     case Mod:init(Args) of
         ignore ->
             ignore;
@@ -309,7 +311,7 @@ init_stage1(Mod, Args, Opts, #st_gensmpp34{logger=Logger}=St0) ->
             smpp34_log:error(Logger, "gen_esme34: ~p while initializing callback module", [Reason]),
             {stop, Reason};
         {ok, {_, _, _}=ConnSpec, ModSt} ->
-			St1 = St0#st_gensmpp34{mod=Mod, mod_st=ModSt},
+			St1 = St0#st_gensmpp34{mod=Mod, mod_st=ModSt, max_async_transmit=MaxAsyncTrans},
             init_stage2(ConnSpec, Opts, St1)
     end.
 
