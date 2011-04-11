@@ -175,7 +175,7 @@ handle_info({async_transmit_pdu, Pdu, Extra}, #st_gensmpp34{esme=Esme,
     async_transmit_count=N}=St) ->
     Reply = smpp34_esme_core:send(Esme, Pdu),
     self() ! {handle_tx, Reply, Extra},
-    {reply, ok, St#st_gensmpp34{async_transmit_count=N-1}};
+    {noreply, St#st_gensmpp34{async_transmit_count=N-1}};
 
 handle_info({handle_tx, Reply, Extra}, St) ->
     handle_tx(Reply, Extra, St);
