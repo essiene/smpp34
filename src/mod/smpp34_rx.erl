@@ -34,7 +34,15 @@ deliver(Pid, [Head|Rest]) ->
 	deliver(Pid, Head),
 	deliver(Pid, Rest);
 deliver(Pid, Pdu) ->
-	gen_server:call(Pid, {self(), Pdu}).
+    case catch(gen_server:call(Pid, {self(), Pdu})) of
+        {'EXIT', {timeout, _}} ->
+            {error, timeout};
+        {'EXIT', {Reason, _}} ->
+            {error, Reason};
+        Other ->
+            Other
+    end.
+
 
 init([Owner, Tx, Socket, Logger]) ->
 	process_flag(trap_exit, true),
