@@ -107,19 +107,96 @@ is required and the callback reply returned.
 Transmitting Pdus
 -----------------
 
+There are three different ways to transmit PDUs.
+
+1. Synchronous (From Userspace only via transmit_pdu/2,3
+2. Asynchronous (From Userspace and within gen_esme34 callback, via
+                 async_transmit_pdu/2,3
+3. Via {tx,,} tuple (From within gen_esme34 callback
+
+The transmit functions are:
+
+   - transmit_pdu(ServerRef, Pdu)
+   - transmit_pdu(ServerRef, Pdu, Extra)
+   - async_transmit_pdu(ServerRef, Pdu)
+   - async_transmit_pdu(ServerRef, Pdu, Extra)
+   
+The {tx,,} tuple is defined further below.
+
+ServerRef is the gen_esme34 server reference returned from start or start_link.
+Extra is the extra parameter passed to handle_tx. Note that in transmit_pdu/2
+and async_transmit_pdu/2 where the extra parameter is not supplied, 
+the atom undefined, is delivered to handle_tx.
+
+
+
+Synchronous Tranmission - transmit_pdu/2,3
+------------------------------------------
+
+The simplest way to transmit a PDU is from Userspace by calling
+gen_esme34:transmit_pdu/2 or its close cousin gen_esme34:transmit_pdu/3.
+
+transmit_pdu/2 takes the gen_esme34 server reference (either pid or registered
+name) as well as the PDU to transmit. It proceeds to transmit the PDU and
+only returns to the call _after_ the tranmission has been attempted.
+
+The results of the transmission are delivered to the handle_tx/3 callback.
+See below.
+
+An important point to note about the synchronous API is that it is limited by
+the effective throughput b/w gen_esme34 and the SMSC. That is, transmit_pdu
+will never work faster than the lowest time it takes to send a PDU to the SMSC.
+
+As such the synchronous api will never overrun the gen_esme34, no matter how
+slow or throttled the connection to the SMSC is.
+
+Another point to note is that the synchronous api can ONLY be called from
+Userspace. Transmission from within the gen_esme34 callback has to be done
+using any of the other two methods.
+
+Asynchronous Transmission - async_transmit_pdu/2,3
+--------------------------------------------------
+
+The async_transmit_pdu/2,3 functions exist to bypass the limitations of the 
+transmit_pdu/2,3 functions, namely:
+
+1. Limited by througput on the wire
+2. Can only be called from Userspace
+
+To this end, the asynchronous api is implemented by gen_server:cast, rather 
+than gen_server:call for the synchronous api. The parameters are exactly the
+same as with transmit_pdu/2,3.
+
+The problem now becomes that it is possible to overrun the gen_esme34 mailbox
+if the sender transmits much faster than the effective througput on the wire
+between gen_esme34 and SMSC. This can lead to the gen_esme34 crashing when
+the SMSC throttles it or there is a sudden burst of messages.
+
+To help manage this, the gen_esme34 introduces an option during create time:
+  - max_async_transmit
+
+This option when set, limits the asynchronous api to have at most 
+max_async_transmit outstanding PDUs yet to be transmitted. When this condition
+occurs, a warning message is sent to handle_tx/3 to notify of this condition.
+
+This warning message is:
+    {warning, async_transmit_overload, Pdu}
+
+It is delivered as the first parameter of the handle_tx/3 callback. Once 
+received, the implementor SHOULD take steps to throttle its sending. The best
+way being to introduce a back-off timer of some sort and try again when the
+timer expires. 
+
+
+Transmitting Via {tx,,} tuple
+-----------------------------
 Apart from init/1, terminate/2 and code_change/3, all other callbacks implement
-the {tx,} tuple response. This response spec is used when transmitting a PDU
-from within gen_esme34 itself as opposed to transmitting from user space. 
+the {tx,} tuple response. This response spec initiates a transmit of the PDU
+defined in the PDU spec, from within gen_esme34 itself as opposed to 
+transmitting from user space.  This is typically used to send response PDUs
 
-Transmitting from userspace is covered further below.
-
-handle_rx/2 and handle_tx/3 can respond with replies valid for 
-gen_server:info/2 callback, but in addition to those replies, it can also 
-reply with the 'tx' tuple. Also, handle_call/3, handle_cast/2 and handle_info/2
-can also response with the 'tx' tuple.
-
-Note that for handle_call/3, if the 'tx' tuple is returned, instead of a 
-reply tuple, the gen_esme34 will have to explicitly call gen_esme34:reply/2
+handle_call/3, handle_cast/2, handle_info/2, handle_rx/2 and handle_tx/3 all
+support the {tx,,} tuple response spec.
 
 The 'tx' tuple looks like:
 
@@ -137,6 +214,10 @@ The PduSpec can be:
 The parameter 'Extra' is passed 'as-is' to handle_tx in the 'Extra' parameter. 
 See further below for more information.
 
+*** Note that for handle_call/3, if the 'tx' tuple is returned, instead of a 
+reply tuple, the gen_esme34 will have to explicitly call gen_esme34:reply/2
+
+
 
 Transmitted Pdus
 ----------------
@@ -144,8 +225,12 @@ Transmitted Pdus
 When a PDU is sent to the SMSC either successfully or the sending failed, this
 reply is contained in a tuple and can be any of the following:
 
-    - {ok, SmppSequenceNumber} 
+    - {ok, SmppSequenceNumber} :
+            PDU tranmitted successfully
     - {error, Reason}
+            Error occurred with reason 'Reason' when transmitting the PDU
+    - {warning, async_transmit_overload, PDU}
+            max_async_transmit limit exceeded. PDU not tranmitted.
 
 This status reason is delivered to handle_tx/3, along with the 'Extra' 
 parameter and the gen_esme34 state.
@@ -157,21 +242,6 @@ least a transaction id uniquely associated with the PDU.
 
 If no extra parameter was specified, it will be the atom 'undefined'
 
-
-Transmission From Userspace
----------------------------
-
-Apart from returning the {tx,_,_} tuple from handle_rx/2, it is possible to 
-initiate a transmit from userspace. This is done by calling any of the
-transmit_pdu functions:
-
-   - transmit_pdu(ServerRef, Pdu)
-   - transmit_pdu(ServerRef, Pdu, Extra)
-
-ServerRef is the gen_esme34 server reference returned from start or start_link.
-Extra is the extra parameter passed to handle_tx. Note that in transmit_pdu/2
-      where the extra parameter is not supplied, the atom undefined, is sent
-      to handle_tx.
 
 Instrospection: Ping/1
 ----------------------
@@ -195,5 +265,3 @@ When the SMSC sends an Unbind pdu, esme_core will honor this by sending the
 unbind response and disconnecting. The gen_esme34 will die with the proper
 reason. If an unbind response is recieved due to an unbind we sent earlier,
 the same thing happens.
-
-
