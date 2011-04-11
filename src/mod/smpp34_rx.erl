@@ -92,7 +92,7 @@ handle_call({Rx, #pdu{body=#unbind_resp{}}}, _F, #st_rx{rx=Rx, log=Log}=St) ->
     smpp34_log:warn(Log, "rx: UnbindResp PDU received"),
 	{stop, unbind_resp, St};
 handle_call({Rx, #pdu{}=Pdu}, _F, #st_rx{owner=Owner, rx=Rx}=St) ->
-	ok = owner_send(Owner, Pdu),
+    smpp34_esme_core:deliver(Owner, Pdu),
 	{reply, ok, St};
 handle_call(getrx, _From, #st_rx{rx=Rx}=St) ->
 	{reply, {ok, Rx}, St};
@@ -130,6 +130,3 @@ tx_send(undefined, _) ->
 	ok;
 tx_send(Tx, Pdu) ->
     smpp34_tx:send(Tx, Pdu). % think more globally with handling of timeouts
-
-owner_send(Owner, Pdu) ->
-    smpp34_esme_core:deliver(Owner, Pdu).
