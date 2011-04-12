@@ -5,17 +5,17 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
         handle_rx/2, handle_tx/3, terminate/2, code_change/3]).
 
--export([start/0, start/3, stop/0, sendsms/3, ping/0]).
+-export([start/0, start/4, stop/0, sendsms/3, ping/0]).
 
 -record(state, {host, port, system_id, password, owner, mref}).
 
 start() ->
 	application:start(smpp34),
-    gen_esme34:start({local, ?MODULE}, ?MODULE, [self(), "localhost", 10000, "mmayen", "mmayen"], [{ignore_version, true}]).
+    start("localhost", 10000, true, 2500).
 
-start(Host, Port, IgnoreVersion) ->
+start(Host, Port, IgnoreVersion, MaxAsyncTransmit) ->
 	application:start(smpp34),
-    gen_esme34:start({local, ?MODULE}, ?MODULE, [self(), Host, Port, "mmayen", "mmayen"], [{ignore_version, IgnoreVersion}]).
+    gen_esme34:start({local, ?MODULE}, ?MODULE, [self(), Host, Port, "mmayen", "mmayen"], [{ignore_version, IgnoreVersion}, {max_async_transmit, MaxAsyncTransmit}]).
 
 stop() ->
     gen_esme34:cast(?MODULE, stop).
@@ -37,6 +37,9 @@ init([Owner, Host, Port, SystemId, Password]) ->
 handle_tx({ok, Sn}, Extra, St) ->
 	error_logger:info_msg("helo|tx|~p|ok|~p~n", [Extra, Sn]),
 	{noreply, St};
+handle_tx({warning, transmit_overload=Reason}, Extra, St) ->
+	error_logger:info_msg("helo|tx|~p|warn|~p~n", [Extra, Reason]),
+	{noreply, St};
 handle_tx({error, Reason}, Extra, St) ->
 	error_logger:info_msg("helo|tx|~p|err|~p~n", [Extra, Reason]),
 	{noreply, St}.
@@ -46,7 +49,8 @@ handle_rx(#pdu{body=#deliver_sm{source_addr=Src, destination_addr=Dst, short_mes
     Did = id(),
     DeliverSmResp = Pdu#pdu{command_status=?ESME_ROK, body=#deliver_sm_resp{message_id=Did}},
     SubmitSm = #pdu{body=#submit_sm{source_addr=Dst, destination_addr=Src, short_message="Hello SMPP World"}},
-    {tx, [{DeliverSmResp, Did}, {SubmitSm, id()}], St};
+    gen_esme34:async_transmit_pdu(self(), SubmitSm, id()),
+    {tx, {DeliverSmResp, Did}, St};
 
 handle_rx(Pdu, St) ->
     error_logger:info_msg("helo|rx|~p~n", [Pdu]),
