@@ -43,7 +43,12 @@ send(Pid, #pdu{}=Pdu) ->
     end.
 
 deliver(Pid, Pdu) ->
-    gen_server:call(Pid, {deliver, self(), Pdu}).
+    case catch(gen_server:call(Pid, {deliver, self(), Pdu})) of
+        {'EXIT', {Reason, _}} ->
+            {error, Reason};
+        ok ->
+            ok
+    end.
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
