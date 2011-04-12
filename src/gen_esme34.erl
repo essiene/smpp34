@@ -149,7 +149,7 @@ handle_cast({transmit_pdu, Pdu, Extra}, #st_gensmpp34{max_async_transmit=infinit
     self() ! {async_transmit_pdu, Pdu, Extra},
     {noreply, St#st_gensmpp34{async_transmit_count=N+1}};
 
-handle_cast({transmit_pdu, Pdu, Extra}, #st_gensmpp34{max_async_transmit=N,
+handle_cast({transmit_pdu, _Pdu, Extra}, #st_gensmpp34{max_async_transmit=N,
     async_transmit_count=N}=St) ->
     self() ! {handle_tx, {warning, transmit_overload}, Extra},
     {noreply, St};
