@@ -180,12 +180,14 @@ max_async_transmit outstanding PDUs yet to be transmitted. When this condition
 occurs, a warning message is sent to handle_tx/3 to notify of this condition.
 
 This warning message is:
-    {warning, async_transmit_overload, Pdu}
+    {warning, transmit_overload}
 
 It is delivered as the first parameter of the handle_tx/3 callback. Once 
 received, the implementor SHOULD take steps to throttle its sending. The best
 way being to introduce a back-off timer of some sort and try again when the
-timer expires. 
+timer expires.  Remember also that an 'Extra' parameter is passed as the second
+paramter to the handle_tx/3 function, which should be used to uniquely identify
+each PDU expecially important in this case.
 
 
 Transmitting Via {tx,,} tuple
@@ -229,8 +231,8 @@ reply is contained in a tuple and can be any of the following:
             PDU tranmitted successfully
     - {error, Reason}
             Error occurred with reason 'Reason' when transmitting the PDU
-    - {warning, async_transmit_overload, PDU}
-            max_async_transmit limit exceeded. PDU not tranmitted.
+    - {warning, transmit_overload}
+            max_async_transmit limit exceeded. 
 
 This status reason is delivered to handle_tx/3, along with the 'Extra' 
 parameter and the gen_esme34 state.
