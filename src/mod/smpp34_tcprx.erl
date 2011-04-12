@@ -35,12 +35,18 @@ handle_cast(stop, St) ->
 handle_cast(_Req, St) ->
     {noreply, St}.
 
-handle_info({tcp, Socket, Data}, #st_tcprx{socket=Socket, data=Data0, pdusink=PduSink}=St) ->
+handle_info({tcp, Socket, Data}, #st_tcprx{socket=Socket, data=Data0, pdusink=PduSink, log=Log}=St) ->
     Data1 = <<Data0/binary,Data/binary>>,
 	{_, PduList, Rest} = smpp34pdu:unpack(Data1), 
-	smpp34_rx:deliver(PduSink, PduList), 
-	inet:setopts(Socket, [{active, once}]), 
-	{noreply, St#st_tcprx{data=Rest}};
+	case smpp34_rx:deliver(PduSink, PduList) of
+        {error, timeout} ->
+            smpp34_log:warn(Log, "tcprx: Receive pipeline busy. Network receive suspended for 5 seconds"),
+            {noreply, St#st_tcprx{data=Rest}, 5000};
+        ok -> 
+            smpp34_log:debug(Log, "tcprx: Continuing network receive"),
+            inet:setopts(Socket, [{active, once}]), 
+            {noreply, St#st_tcprx{data=Rest}}
+    end;
 handle_info({tcp_closed, Socket}, #st_tcprx{socket=Socket, log=Log}=St) ->
     smpp34_log:error(Log, "tcprx: Socket closed by peer"),
 	{stop, normal, St#st_tcprx{send_unbind=false}};
@@ -53,6 +59,10 @@ handle_info(#'DOWN'{ref=Mref, reason=unbind_resp}, #st_tcprx{mref=Mref}=St) ->
 	{stop, normal, St#st_tcprx{send_unbind=false}};
 handle_info(#'DOWN'{ref=Mref}, #st_tcprx{mref=Mref}=St) ->
 	{stop, normal, St};
+handle_info(timeout, #st_tcprx{socket=Socket, log=Log}=St) ->
+    inet:setopts(Socket, [{active, once}]),
+    smpp34_log:warn(Log, "tcprx: Attempting network receive again"),
+    {noreply, St};
 handle_info(_Req, St) ->
 	{noreply, St}.
 
