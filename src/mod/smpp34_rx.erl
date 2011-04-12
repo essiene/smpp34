@@ -34,14 +34,7 @@ deliver(Pid, [Head|Rest]) ->
 	deliver(Pid, Head),
 	deliver(Pid, Rest);
 deliver(Pid, Pdu) ->
-    case catch(gen_server:call(Pid, {self(), Pdu})) of
-        {'EXIT', {timeout, _}} ->
-            {error, timeout};
-        {'EXIT', {Reason, _}} ->
-            {error, Reason};
-        Other ->
-            Other
-    end.
+    gen_server:call(Pid, {self(), Pdu}).
 
 
 init([Owner, Tx, Socket, Logger]) ->
@@ -100,8 +93,8 @@ handle_call({Rx, #pdu{body=#unbind_resp{}}}, _F, #st_rx{rx=Rx, log=Log}=St) ->
     smpp34_log:warn(Log, "rx: UnbindResp PDU received"),
 	{stop, unbind_resp, St};
 handle_call({Rx, #pdu{}=Pdu}, _F, #st_rx{owner=Owner, rx=Rx}=St) ->
-    smpp34_esme_core:deliver(Owner, Pdu),
-	{reply, ok, St};
+    Reply = smpp34_esme_core:deliver(Owner, Pdu),
+	{reply, Reply, St};
 handle_call(getrx, _From, #st_rx{rx=Rx}=St) ->
 	{reply, {ok, Rx}, St};
 handle_call(ping, _From, #st_rx{owner=Owner, tx=Tx, rx=Rx}=St) ->
