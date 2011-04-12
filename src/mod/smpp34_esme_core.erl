@@ -35,7 +35,12 @@ stop(Pid) ->
 	gen_server:call(Pid, stop).
 
 send(Pid, #pdu{}=Pdu) ->
-    gen_server:call(Pid, {tx, Pdu}).
+    case catch(gen_server:call(Pid, {tx, Pdu})) of
+        {'EXIT', {Reason,_}} ->
+            {error, Reason};
+        {ok, Snum} ->
+            {ok, Snum}
+    end.
 
 deliver(Pid, Pdu) ->
     gen_server:call(Pid, {deliver, self(), Pdu}).
@@ -61,7 +66,7 @@ handle_call({deliver, Rx, Pdu}, _From, #st_esmecore{rx=Rx, owner=Owner}=St) ->
   Owner ! {esme_data, self(), Pdu},
   {reply, ok, St};
 handle_call({tx, #pdu{}=Pdu}, _From, #st_esmecore{tx=Tx}=St) ->
-  {reply, catch(smpp34_tx:send(Tx, Pdu)), St};
+  {reply, smpp34_tx:send(Tx, Pdu), St};
 handle_call(stop, _From, St) ->
   {stop, normal, ok, St};
 handle_call(R, _From, St) ->
